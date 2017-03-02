@@ -7,35 +7,32 @@ extern "C" {
 
 #include <inttypes.h>
 
-#ifndef RTECG_BUFLEN
-#define RTECG_BUFLEN 256
-#endif
-#ifndef RTECG_FS
-#define RTECG_FS 256
-#endif
-#ifndef RTECG_MWILEN
-#define RTECG_MWILEN 38
-#endif
-#ifndef RTECG_DELAY
-#define RTECG_DELAY 52
-#endif
-
 typedef double rtecg_float;
 typedef uint32_t rtecg_ctr;
+typedef int rtecg_int;
 
-typedef struct _rtecg
-{
-	rtecg_float raw[RTECG_BUFLEN];
-	rtecg_float h[RTECG_BUFLEN];
-	rtecg_float mwi[RTECG_BUFLEN];
-	rtecg_float raw_peaks[RTECG_BUFLEN];
-	rtecg_float mwi_peaks[RTECG_BUFLEN];
-	rtecg_ctr rawp, hp, dsqp, mwip, raw_peaksp, mwi_peaksp; // buffer positions
-	rtecg_float rawm, mwim, rawS, mwiS; // running mean and sum for peak detector
-	int peak_win_size_raw, peak_win_size_mwi;
-	rtecg_float stdevx_raw, stdevx_mwi;
-	rtecg_float spki, npki, spkf, npkf;
-} rtecg;
+#define RTECG_FS 200
+#define RTECG_MS_PER_SAMP (1000. / (double)RTECG_FS)
+#define RTECG_MTOS(ms)((rtecg_int)(((ms) / RTECG_MS_PER_SAMP) + 0.5))
+
+// buffer lengths
+#define RTECG_LPBUFLEN ((RTECG_MTOS(25)) * 2) // low pass buffer length
+#define RTECG_HPBUFLEN RTECG_MTOS(125) // high pass buffer length
+//#define RTECG_DERIVLEN ((RTECG_MTOS(10)) | 1)  // derivative length
+#define RTECG_DERIVLEN RTECG_MTOS(10)  // derivative length
+#define RTECG_MWILEN RTECG_MTOS(80) // moving window integration length
+#define RTECG_PKWINLEN ((RTECG_MTOS(165)) | 1) // length of window to search for peaks in
+#define RTECG_PKKNEIGH (((RTECG_PKWINLEN) - 1) / 2) // number of samples to the left and right of candidate peak
+// delays incurred at each stage of processing
+#define RTECG_LPDEL (((RTECG_LPBUFLEN) / 2) - 1) // number of samples delay for lp filter
+#define RTECG_HPDEL (((RTECG_HPBUFLEN) - 1) / 2) // number of samples delay for hp filter
+#define RTECG_DERIVDEL (((RTECG_DERIVLEN) - 1) / 2) // number of samples delay for derivative filter
+#define RTECG_PKDEL RTECG_PKKNEIGH // number of samples delay for peak window
+#define RTECG_MWIDEL RTECG_MWILEN // number of samples delay for moving window integrator
+
+// various values
+#define RTECG_BURNLEN RTECG_MTOS(6000) // burn in length
+// have to add search back, debounce
 
 #ifdef __cplusplus
 }

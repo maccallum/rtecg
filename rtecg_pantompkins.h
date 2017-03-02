@@ -7,14 +7,14 @@ extern "C" {
 
 #include "rtecg.h"
 
-#define RTECG_PT_HISTLEN 12 // number of candidate peaks to keep around
+#define RTECG_PT_HISTLEN 64 // number of candidate peaks to keep around
 #define RTECG_PT_MAX_DIST_BTN_MWI_AND_FILT 40 // maximum number of samples between a candidate peak in filt and mwi
 typedef struct _rtecg_pt
 {
 	rtecg_float spkf, spki, npkf, npki, f1, f2, i1, i2;
 	rtecg_ctr last_spkf, last_spki;
 	rtecg_ctr filt_peaks[RTECG_PT_HISTLEN], mwi_peaks[RTECG_PT_HISTLEN];
-	rtecg_ctr filt_peaks_pos, mwi_peaks_pos;
+	int filt_peaks_pos, mwi_peaks_pos;
 } rtecg_pt;
 
 rtecg_pt rtecg_pt_init(void);

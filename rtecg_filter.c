@@ -3,53 +3,123 @@
 #include <math.h>
 #include <string.h>
 
+////////////////////////////////////////////////////////////////////////////////////////////////////
+// low pass filter
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
 rtecg_ptlp rtecg_ptlp_init(void)
 {
 	rtecg_ptlp s;
 	memset(&s, 0, sizeof(rtecg_ptlp));
+	s.xm24 = RTECG_LPBUFLEN / 2;
 	return s;
 }
 
-rtecg_ptlp rtecg_ptlp_hx0(rtecg_ptlp s, rtecg_float x0)
+rtecg_ptlp rtecg_ptlp_hx0(rtecg_ptlp s, rtecg_int x0)
 {
-	s.ys[0] = 2 * s.ys[1] - s.ys[2] + x0 - 2 * s.xs[6] + s.xs[12];
-	for(int i = 11; i >= 0; i--){
-		s.xs[i + 1] = s.xs[i];
+	s.y0 = (s.y1 << 1) - s.y2 + x0 - (s.xs[s.xm24] << 1) + s.xs[s.xm48];
+	s.y2 = s.y1;
+	s.y1 = s.y0;
+	s.xs[s.xm48] = x0;
+	if(++(s.xm48) == RTECG_LPBUFLEN){
+		s.xm48 = 0;
 	}
-	s.xs[0] = x0;
-	s.ys[2] = s.ys[1];
-	s.ys[1] = s.ys[0];
+	if(++(s.xm24) == RTECG_LPBUFLEN){
+		s.xm24 = 0;
+	}
 	return s;
 }
 
-rtecg_float rtecg_ptlp_y0(rtecg_ptlp s)
+rtecg_int rtecg_ptlp_y0(rtecg_ptlp s)
 {
-	return s.ys[0];
+	return s.y0 / ((RTECG_LPBUFLEN * RTECG_LPBUFLEN) / 4);
 }
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+// high pass filter
+////////////////////////////////////////////////////////////////////////////////////////////////////
 
 rtecg_pthp rtecg_pthp_init(void)
 {
 	rtecg_pthp s;
 	memset(&s, 0, sizeof(rtecg_pthp));
+	s.xm64 = (RTECG_HPBUFLEN + 1) / 2;
 	return s;
 }
 
-rtecg_pthp rtecg_pthp_hx0(rtecg_pthp s, rtecg_float x0)
+rtecg_pthp rtecg_pthp_hx0(rtecg_pthp s, rtecg_int x0)
 {
-        s.ys[0] = s.ys[1] - (x0 / 32) + s.xs[16] - s.xs[17] + (s.xs[32] / 32);
-	for(int i = 31; i >= 0; i--){
-		s.xs[i + 1] = s.xs[i];
+	s.y += x0 - s.xs[s.xm128];
+	s.z = s.xs[s.xm64] - (s.y / RTECG_HPBUFLEN);
+	s.xs[s.xm128] = x0;
+	if(++(s.xm128) == RTECG_HPBUFLEN){
+		s.xm128 = 0;
 	}
-	s.xs[0] = x0;
-	s.ys[1] = s.ys[0];
+	if(++(s.xm64) == RTECG_HPBUFLEN){
+		s.xm64 = 0;
+	}
 	return s;
 }
 
-rtecg_float rtecg_pthp_y0(rtecg_pthp s)
+rtecg_int rtecg_pthp_y0(rtecg_pthp s)
 {
-	return s.ys[0];
+	return s.z;
 }
 
+////////////////////////////////////////////////////////////////////////////////////////////////////
+// derivative approximation
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+rtecg_ptd rtecg_ptd_init(void)
+{
+	rtecg_ptd s;
+	memset(&s, 0, sizeof(rtecg_ptd));
+	return s;
+}
+
+rtecg_ptd rtecg_ptd_hx0(rtecg_ptd s, rtecg_int x0)
+{
+	s.y = x0 - s.xs[s.xm1];
+	s.xs[s.xm1] = x0;
+	if(++(s.xm1) == RTECG_DERIVLEN){
+		s.xm1 = 0;
+	}
+	return s;
+}
+
+rtecg_int rtecg_ptd_y0(rtecg_ptd s)
+{
+	return s.y * s.y;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+// moving window integrator
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+rtecg_ptmwi rtecg_ptmwi_init(void)
+{
+	rtecg_ptmwi s;
+	memset(&s, 0, sizeof(rtecg_ptmwi));
+	return s;
+}
+
+rtecg_ptmwi rtecg_ptmwi_hx0(rtecg_ptmwi s, rtecg_int x0)
+{
+	s.sum += x0;
+	s.sum -= s.xs[s.ptr];
+	s.xs[s.ptr] = x0;
+	if(++(s.ptr) == RTECG_MWILEN){
+		s.ptr = 0;
+	}
+	return s;
+}
+
+rtecg_int rtecg_ptmwi_y0(rtecg_ptmwi s)
+{
+	return s.sum / RTECG_MWILEN;
+}
+
+/*
 rtecg_bq rtecg_bq_init(rtecg_float gain, rtecg_float a1, rtecg_float a2, rtecg_float b0, rtecg_float b1, rtecg_float b2)
 {
 	return (rtecg_bq){{0., 0., 0.}, {0., 0., 0.}, a1, a2, b0, b1, b2, gain};
@@ -114,3 +184,4 @@ rtecg_float rtecg_bw_y0(rtecg_bw s)
 {
 	return rtecg_bq_y0(s.bq[s.n - 1]);
 }
+*/

@@ -11,8 +11,30 @@
 #include "rtecg_pantompkins.h"
 #include "testdat.h"
 
-
 #define FS 200
+
+void lowPassFilter(double *vectorLPF, double *initialSamples, int *channelSize)
+{
+	int contLPF = 12;
+
+	while( contLPF < *channelSize ){
+		vectorLPF[ contLPF ]= 2 * vectorLPF[ contLPF - 1 ] - vectorLPF[ contLPF - 2 ] + initialSamples[ contLPF ] - 2 * initialSamples[ contLPF - 6 ]
+			+ initialSamples[ contLPF - 12 ];
+		contLPF++;
+	}
+}
+
+void highPassFilter(double *vectorHPF, double *vectorLPF, int *channelSize)
+{
+
+	int contHPF = 32;
+
+	while( contHPF < *channelSize ){
+		vectorHPF[ contHPF ]= 32 * vectorLPF[ contHPF - 16 ] - ( 1.0 / 32.0 ) * ( ( vectorHPF[ contHPF - 1 ] + vectorLPF[ contHPF ] - vectorLPF[ contHPF - 32 ] ) );
+		contHPF++;
+	}
+
+}
 
 int get_max_in_range(rtecg_float *buf, rtecg_ctr mini, rtecg_ctr maxi)
 {
@@ -29,42 +51,67 @@ int get_max_in_range(rtecg_float *buf, rtecg_ctr mini, rtecg_ctr maxi)
 
 int main(int ac, char **av)
 {
+	int LPBUFLEN = RTECG_LPBUFLEN;
+	int HPBUFLEN = RTECG_HPBUFLEN;
+	int DERIVLEN = RTECG_DERIVLEN;
+	int MWILEN = RTECG_MWILEN;
+	int PKWINLEN = RTECG_PKWINLEN;
+	int PKKNEIGH = RTECG_PKKNEIGH;
+
+	int LPDEL = RTECG_LPDEL;
+	int HPDEL = RTECG_HPDEL;
+	int DERIVDEL = RTECG_DERIVDEL;
+	int PKDEL = RTECG_PKDEL;
+	int MWIDEL = RTECG_MWIDEL;
+
+#define ppp(x)printf(#x" = %d\n", x)
+	ppp(RTECG_LPBUFLEN);
+	ppp(RTECG_HPBUFLEN);
+	ppp(RTECG_DERIVLEN);
+	ppp(RTECG_MWILEN);
+	ppp(RTECG_PKWINLEN);
+	ppp(RTECG_PKKNEIGH);
+
+	ppp(RTECG_LPDEL);
+	ppp(RTECG_HPDEL);
+	ppp(RTECG_DERIVDEL);
+	ppp(RTECG_PKDEL);
+	ppp(RTECG_MWIDEL);
+
 	int n = sizeof(testdat) / sizeof(int);
 	//char *keys[] = {"raw", "filt1", "filt2", "filt3", "filt4", "filt5", "filt6", "dsq", "mwi", "raw_peaks", "mwi_peaks"};
-	char *keys[] = {"raw", "filt", "mwi", "peaksf", "peaksi", "spkf", "npkf", "spki", "npki", "f1", "f2", "i1", "i2"};
+	char *keys[] = {"raw", "lp", "hp", "mwi", "peaksf", "peaksi", "spkf", "npkf", "spki", "npki", "f1", "f2", "i1", "i2"};
 	rtecg_float out[sizeof(keys) / sizeof(char*)][n];
 	memset(out, 0, (sizeof(keys) / sizeof(char*)) * n * sizeof(rtecg_float));
 	for(int i = 0; i < n; i++){
-		out[0][i] = (testdat[i] / 512.) - 1.;
+		//out[0][i] = (testdat[i] / 512.) - 1.;
+		out[0][i] = testdat[i];
 	}
-	/*
-	float a1[] = {-1.56342996066964134982, -1.58439134266949421814, -1.62651970581501825741, -1.69007216670843707362, -1.77501375864393784454, -1.88042432673360337958};
-	float a2[] = {0.61173153495920273848, 0.63334051088737186586, 0.67677041379697944201, 0.74228630380993054771, 0.82985213393732903953, 0.93851932145579664013};
-	float b0[] = {0.19413423252039860301, 0.18332974455631403932, 0.16161479310151033451, 0.12885684809503472614, 0.08507393303133542473, 0.03074033927210166259};
-	float b1[] = {0.00000000000000000000, 0.00000000000000000000, 0.00000000000000000000, 0.00000000000000000000, 0.00000000000000000000, 0.00000000000000000000};
-	float b2[] = {-0.19413423252039860301, -0.18332974455631403932, -0.16161479310151033451, -0.12885684809503472614, -0.08507393303133542473, -0.03074033927210166259};
-	t_bq h[6];
-	for(int i = 0; i < 6; i++){
-		h[i] = bq_init(1.0, a1[i], a2[i], b0[i], b1[i], b2[i]);
-	}
-	*/
-	#define RAW 0
-	#define FILT 1
-	#define MWI 2
-	#define PKF 3
-	#define PKI 4
-	#define SPKF 5
-	#define NPKF 6
-	#define SPKI 7
-	#define NPKI 8
-	#define F1 9
-	#define F2 10
-	#define I1 11
-	#define I2 12
+
+	enum{
+		RAW = 0,
+		LP,
+		HP,
+		MWI,
+		PKF,
+		PKI,
+		SPKF,
+		NPKF,
+		SPKI,
+		NPKI,
+		F1,
+		F2,
+		I1,
+		I2
+	};
+	const int FILT = HP;
+	
 	//int filter_order = 12;
-	//rtecg_bw bw = rtecg_bw_init(0, filter_order, 10, 256, 1.0);
+	//rtecg_bw bw = rtecg_bw_init(0, filter_order, 10, 200, 1.0);
 	rtecg_ptlp lp = rtecg_ptlp_init();
 	rtecg_pthp hp = rtecg_pthp_init();
+	rtecg_ptd d = rtecg_ptd_init();
+	rtecg_ptmwi mwi = rtecg_ptmwi_init();
 	int mwilen = 30;
 	rtecg_pt pts = rtecg_pt_init();
 
@@ -72,11 +119,22 @@ int main(int ac, char **av)
 	rtecg_ctr ispkf1 = 0, inpkrf1 = 0, ispki1 = 0, inpkri1 = 0;
 	for(int i = 0; i < 1200; i++){
 		// filter
+		//out[LP][i] = rtecg_ptlp_hx0(out[RAW], i, n, out[LP], i, n);
+		//out[HP][i] = rtecg_pthp_hx0(out[LP], i, n, out[HP], i, n);
 		lp = rtecg_ptlp_hx0(lp, out[RAW][i]);
-		hp = rtecg_pthp_hx0(hp, rtecg_ptlp_y0(lp));
-		out[FILT][i] = rtecg_pthp_y0(hp);
+		out[LP][i] = rtecg_ptlp_y0(lp);
+		hp = rtecg_pthp_hx0(hp, out[LP][i]);
+		out[HP][i] = rtecg_pthp_y0(hp);
+		//hp = rtecg_pthp_hx0(hp, rtecg_ptlp_y0(lp));
+		//out[FILT][i] = rtecg_pthp_y0(hp);
+		//out[FILT][i] = rtecg_ptlp_y0(lp);
+		//bw = rtecg_bw_hx0(bw, out[RAW][i]);
+		//ouT[FILT][i] = rtecg_bw_y0(bw);
 		// preprocess
-		out[MWI][i] = rtecg_pt_preprocess(out[FILT], i, n, mwilen);
+		//out[MWI][i] = rtecg_pt_preprocess(out[HP], i, n, mwilen);
+		d = rtecg_ptd_hx0(d, out[HP][i]);
+		mwi = rtecg_ptmwi_hx0(mwi, rtecg_ptd_y0(d));
+		out[MWI][i] = rtecg_ptmwi_y0(mwi);
 		// filtered signal
 		out[PKF][i] = rtecg_peak0(out[FILT], i, n, 16);
 
@@ -94,10 +152,10 @@ int main(int ac, char **av)
 		}
 	}
 	
-	printf("%d\n", ispkf1);
-	printf("%d\n", inpkrf1);
-	printf("%d\n", ispki1);
-	printf("%d\n", inpkri1);
+	/* printf("%d\n", ispkf1); */
+	/* printf("%d\n", inpkrf1); */
+	/* printf("%d\n", ispki1); */
+	/* printf("%d\n", inpkri1); */
 
 	rtecg_ctr ispkf2 = 0, inpkrf2 = 0, ispki2 = 0, inpkri2 = 0;
 	ispkf2 = get_max_in_range(out[FILT], 700, 1100);
@@ -110,11 +168,11 @@ int main(int ac, char **av)
 			inpkri2 = i + ispki2;
 		}
 	}
-	printf("******\n");
-	printf("%d\n", ispkf2);
-	printf("%d\n", inpkrf2);
-	printf("%d\n", ispki2);
-	printf("%d\n", inpkri2);
+	/* printf("******\n"); */
+	/* printf("%d\n", ispkf2); */
+	/* printf("%d\n", inpkrf2); */
+	/* printf("%d\n", ispki2); */
+	/* printf("%d\n", inpkri2); */
 
 	memset(out[PKF], 0, n * sizeof(rtecg_float));
 	memset(out[PKI], 0, n * sizeof(rtecg_float));
@@ -126,7 +184,7 @@ int main(int ac, char **av)
 	out[PKF][ispkf2 + 17] = 1;
 	out[PKF][inpkrf2] = 1;
 	out[PKI][ispki2 + 17] = 1;
-	out[PKI][inpkri2] = 1;	
+	out[PKI][inpkri2] = 1;
 
 	pts.spkf = (out[FILT][ispkf1] + out[FILT][ispkf2]) / 2.;
 	pts.npkf = (out[FILT][inpkrf1] + out[FILT][inpkrf2]) / 2.;
@@ -141,24 +199,36 @@ int main(int ac, char **av)
 	memcpy(out[SPKI], out[PKI], n * sizeof(rtecg_float));
 	for(int i = 1200; i < n; i++){
 		// filter
+		//out[LP][i] = rtecg_ptlp_hx0(out[RAW], i, n, out[LP], i, n);
+		//out[HP][i] = rtecg_pthp_hx0(out[LP], i, n, out[HP], i, n);
 		lp = rtecg_ptlp_hx0(lp, out[RAW][i]);
-		hp = rtecg_pthp_hx0(hp, rtecg_ptlp_y0(lp));
-		out[FILT][i] = rtecg_pthp_y0(hp);
+		out[LP][i] = rtecg_ptlp_y0(lp);
+		hp = rtecg_pthp_hx0(hp, out[LP][i]);
+		out[HP][i] = rtecg_pthp_y0(hp);
+		//lp = rtecg_ptlp_hx0(lp, out[RAW][i], out[RAW], i, n, out[FILT], i, n);
+		//hp = rtecg_pthp_hx0(hp, rtecg_ptlp_y0(lp));
+		//out[FILT][i] = rtecg_pthp_y0(hp);
+		//out[FILT][i] = rtecg_ptlp_y0(lp);
+		//bw = rtecg_bw_hx0(bw, out[RAW][i]);
+		//out[FILT][i] = rtecg_bw_y0(bw);
 		// preprocess
-		out[MWI][i] = rtecg_pt_preprocess(out[FILT], i, n, mwilen);
+		//out[MWI][i] = rtecg_pt_preprocess(out[HP], i, n, mwilen);
+		d = rtecg_ptd_hx0(d, out[HP][i]);
+		mwi = rtecg_ptmwi_hx0(mwi, rtecg_ptd_y0(d));
+		out[MWI][i] = rtecg_ptmwi_y0(mwi);
 		// peak identification
 		// filtered signal
 		out[PKF][i] = rtecg_peak0(out[FILT], i, n, 16);
 		// mwi
 		out[PKI][i] = rtecg_peak0(out[MWI], i, n, 16);
 
-		pts = rtecg_pt_process(pts, out[FILT], out[PKF], i, n, out[MWI], out[PKI], i, n);
+		pts = rtecg_pt_process(pts, out[HP], out[PKF], i, n, out[MWI], out[PKI], i, n);
 		out[SPKF][pts.last_spkf] = 1;
 		out[SPKI][pts.last_spki] = 1;
 		out[F1][i] = pts.f1;
 		out[F2][i] = pts.f2;
 		out[I1][i] = pts.i1;
-		out[I1][i] = pts.i1;
+		out[I2][i] = pts.i2;
 	}
 
 	// write to file
