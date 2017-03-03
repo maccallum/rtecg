@@ -78,6 +78,8 @@ int main(int ac, char **av)
 	ppp(RTECG_PKDEL);
 	ppp(RTECG_MWIDEL);
 
+
+
 	int n = sizeof(testdat) / sizeof(int);
 	//char *keys[] = {"raw", "filt1", "filt2", "filt3", "filt4", "filt5", "filt6", "dsq", "mwi", "raw_peaks", "mwi_peaks"};
 	char *keys[] = {"raw", "lp", "hp", "mwi", "peaksf", "peaksi", "spkf", "npkf", "spki", "npki", "f1", "f2", "i1", "i2"};
@@ -235,8 +237,10 @@ int main(int ac, char **av)
 	FILE *fp = fopen("testdat_dict.py", "w");
 	fprintf(fp, "{");
 	//fprintf(fp, "'raw_peak_win' : %d, 'mwi_peak_win' : %d, 'total_delay' : %d,", s.peak_win_size_raw, s.peak_win_size_mwi, PT_DELAY);
-	fprintf(fp, "'filter_delay' : %d, ", 21);
-	fprintf(fp, "'mwi_len' : %d, ", 30);
+	fprintf(fp, "'lpfilter_delay' : %d, ", RTECG_LPDEL);
+	fprintf(fp, "'hpfilter_delay' : %d, ", RTECG_LPDEL + RTECG_HPDEL);
+	fprintf(fp, "'mwi_delay' : %d, ", RTECG_LPDEL + RTECG_HPDEL + RTECG_MWIDEL);
+	fprintf(fp, "'peak_delay' : %d, ", RTECG_PKDEL);
 	for(int i = 0; i < sizeof(keys) / sizeof(char*); i++){
 		fprintf(fp, "'%s' : [", keys[i]);
 		for(int j = 0; j < n - 1; j++){

@@ -26,13 +26,11 @@ typedef int rtecg_int;
 // delays incurred at each stage of processing
 #define RTECG_LPDEL (((RTECG_LPBUFLEN) / 2) - 1) // number of samples delay for lp filter
 #define RTECG_HPDEL (((RTECG_HPBUFLEN) - 1) / 2) // number of samples delay for hp filter
-#define RTECG_DERIVDEL (((RTECG_DERIVLEN) - 1) / 2) // number of samples delay for derivative filter
-#define RTECG_PKDEL RTECG_PKKNEIGH // number of samples delay for peak window
+#define RTECG_DERIVDEL ((RTECG_DERIVLEN) / 2) // number of samples delay for derivative filter
 #define RTECG_MWIDEL RTECG_MWILEN // number of samples delay for moving window integrator
+#define RTECG_PKDEL RTECG_PKKNEIGH + 1 // number of samples delay for peak window
 
-// various values
-#define RTECG_BURNLEN RTECG_MTOS(6000) // burn in length
-// have to add search back, debounce
+
 
 #ifdef __cplusplus
 }
