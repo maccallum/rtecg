@@ -17,7 +17,7 @@ rtecg_ctr rtecg_peak0(rtecg_float *buf, rtecg_ctr bufpos_r, rtecg_ctr buflen, in
 /*
 https://www.researchgate.net/publication/228853276_Simple_Algorithms_for_Peak_Detection_in_Time-Series
  */
-
+/*
 static rtecg_float rtecg_s1(rtecg_float *buf, rtecg_ctr bufpos_r, rtecg_ctr buflen, int k)
 {
 	int64_t xi = ((int64_t)bufpos_r - k) - 1;
@@ -75,3 +75,4 @@ rtecg_ctr rtecg_peak_last_index(rtecg_peak_stats s)
 {
 	return s.last_peak_index;
 }
+*/

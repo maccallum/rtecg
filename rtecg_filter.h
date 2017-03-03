@@ -26,12 +26,39 @@ typedef struct _rtecg_ptd
 	rtecg_int xm1;
 } rtecg_ptd;
 
-typedef struct _rtecg_ptmwi
+typedef struct _rtecg_pti
 {
 	rtecg_int sum;
 	rtecg_int xs[RTECG_MWILEN];
 	rtecg_int ptr;
-} rtecg_ptmwi;
+} rtecg_pti;
+
+typedef struct _rtecg_pk
+{
+	rtecg_int xs[RTECG_PKWINLEN];
+	rtecg_int xm165, xm82;
+	rtecg_int xm82_ispeak;
+} rtecg_pk;
+
+rtecg_ptlp rtecg_ptlp_init(void);
+rtecg_ptlp rtecg_ptlp_hx0(rtecg_ptlp s, rtecg_int x0);
+rtecg_int rtecg_ptlp_y0(rtecg_ptlp s);
+
+rtecg_pthp rtecg_pthp_init(void);
+rtecg_pthp rtecg_pthp_hx0(rtecg_pthp s, rtecg_int x0);
+rtecg_int rtecg_pthp_y0(rtecg_pthp s);
+
+rtecg_ptd rtecg_ptd_init(void);
+rtecg_ptd rtecg_ptd_hx0(rtecg_ptd s, rtecg_int x0);
+rtecg_int rtecg_ptd_y0(rtecg_ptd s);
+
+rtecg_pti rtecg_pti_init(void);
+rtecg_pti rtecg_pti_hx0(rtecg_pti s, rtecg_int x0);
+rtecg_int rtecg_pti_y0(rtecg_pti s);
+
+rtecg_pk rtecg_pk_init(void);
+rtecg_pk rtecg_pk_mark(rtecg_pk s, rtecg_int x0);
+rtecg_int rtecg_pk_havepk(rtecg_pk s);
 
 /*
 typedef struct _rtecg_bq
@@ -48,22 +75,6 @@ typedef struct _rtecg_bw
 	rtecg_bq bq[24];
 } rtecg_bw;
 */
-
-rtecg_ptlp rtecg_ptlp_init(void);
-rtecg_ptlp rtecg_ptlp_hx0(rtecg_ptlp s, rtecg_int x0);
-rtecg_int rtecg_ptlp_y0(rtecg_ptlp s);
-
-rtecg_pthp rtecg_pthp_init(void);
-rtecg_pthp rtecg_pthp_hx0(rtecg_pthp s, rtecg_int x0);
-rtecg_int rtecg_pthp_y0(rtecg_pthp s);
-
-rtecg_ptd rtecg_ptd_init(void);
-rtecg_ptd rtecg_ptd_hx0(rtecg_ptd s, rtecg_int x0);
-rtecg_int rtecg_ptd_y0(rtecg_ptd s);
-
-rtecg_ptmwi rtecg_ptmwi_init(void);
-rtecg_ptmwi rtecg_ptmwi_hx0(rtecg_ptmwi s, rtecg_int x0);
-rtecg_int rtecg_ptmwi_y0(rtecg_ptmwi s);
 
 /*
 rtecg_bq rtecg_bq_init(rtecg_float gain, rtecg_float a1, rtecg_float a2, rtecg_float b0, rtecg_float b1, rtecg_float b2);

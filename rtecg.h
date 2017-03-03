@@ -30,6 +30,10 @@ typedef int rtecg_int;
 #define RTECG_MWIDEL RTECG_MWILEN // number of samples delay for moving window integrator
 #define RTECG_PKDEL RTECG_PKKNEIGH + 1 // number of samples delay for peak window
 
+// various values
+#define RTECG_BURNLEN RTECG_MTOS(6000) // burn in length
+// have to add search back, debounce
+
 
 
 #ifdef __cplusplus

@@ -6,7 +6,6 @@
 #include <math.h>
 #include "rtecg.h"
 #include "rtecg_filter.h"
-#include "rtecg_process.h"
 #include "rtecg_peak.h"
 #include "rtecg_pantompkins.h"
 #include "testdat.h"
@@ -113,8 +112,9 @@ int main(int ac, char **av)
 	rtecg_ptlp lp = rtecg_ptlp_init();
 	rtecg_pthp hp = rtecg_pthp_init();
 	rtecg_ptd d = rtecg_ptd_init();
-	rtecg_ptmwi mwi = rtecg_ptmwi_init();
-	int mwilen = 30;
+	rtecg_pti mwi = rtecg_pti_init();
+	rtecg_pk pkf = rtecg_pk_init();
+	rtecg_pk pki = rtecg_pk_init();
 	rtecg_pt pts = rtecg_pt_init();
 
 	// burn in
@@ -135,13 +135,17 @@ int main(int ac, char **av)
 		// preprocess
 		//out[MWI][i] = rtecg_pt_preprocess(out[HP], i, n, mwilen);
 		d = rtecg_ptd_hx0(d, out[HP][i]);
-		mwi = rtecg_ptmwi_hx0(mwi, rtecg_ptd_y0(d));
-		out[MWI][i] = rtecg_ptmwi_y0(mwi);
+		mwi = rtecg_pti_hx0(mwi, rtecg_ptd_y0(d));
+		out[MWI][i] = rtecg_pti_y0(mwi);
 		// filtered signal
-		out[PKF][i] = rtecg_peak0(out[FILT], i, n, 16);
+		//out[PKF][i] = rtecg_peak0(out[FILT], i, n, 16);
+		pkf = rtecg_pk_mark(pkf, rtecg_pthp_y0(hp));
+		out[PKF][i] = rtecg_pk_havepk(pkf);
 
 		// mwi
-		out[PKI][i]= rtecg_peak0(out[MWI], i, n, 16);
+		//out[PKI][i]= rtecg_peak0(out[MWI], i, n, 16);
+		pki = rtecg_pk_mark(pki, rtecg_pti_y0(mwi));
+		out[PKI][i] = rtecg_pk_havepk(pki);
 	}
 	ispkf1 = get_max_in_range(out[FILT], 200, 600);
 	ispki1 = get_max_in_range(out[MWI], 200, 600);
@@ -216,13 +220,17 @@ int main(int ac, char **av)
 		// preprocess
 		//out[MWI][i] = rtecg_pt_preprocess(out[HP], i, n, mwilen);
 		d = rtecg_ptd_hx0(d, out[HP][i]);
-		mwi = rtecg_ptmwi_hx0(mwi, rtecg_ptd_y0(d));
-		out[MWI][i] = rtecg_ptmwi_y0(mwi);
-		// peak identification
+		mwi = rtecg_pti_hx0(mwi, rtecg_ptd_y0(d));
+		out[MWI][i] = rtecg_pti_y0(mwi);
 		// filtered signal
-		out[PKF][i] = rtecg_peak0(out[FILT], i, n, 16);
+		//out[PKF][i] = rtecg_peak0(out[FILT], i, n, 16);
+		pkf = rtecg_pk_mark(pkf, rtecg_pthp_y0(hp));
+		out[PKF][i] = rtecg_pk_havepk(pkf);
+
 		// mwi
-		out[PKI][i] = rtecg_peak0(out[MWI], i, n, 16);
+		//out[PKI][i]= rtecg_peak0(out[MWI], i, n, 16);
+		pki = rtecg_pk_mark(pki, rtecg_pti_y0(mwi));
+		out[PKI][i] = rtecg_pk_havepk(pki);
 
 		pts = rtecg_pt_process(pts, out[HP], out[PKF], i, n, out[MWI], out[PKI], i, n);
 		out[SPKF][pts.last_spkf] = 1;

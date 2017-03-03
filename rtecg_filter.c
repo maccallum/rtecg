@@ -96,14 +96,14 @@ rtecg_int rtecg_ptd_y0(rtecg_ptd s)
 // moving window integrator
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-rtecg_ptmwi rtecg_ptmwi_init(void)
+rtecg_pti rtecg_pti_init(void)
 {
-	rtecg_ptmwi s;
-	memset(&s, 0, sizeof(rtecg_ptmwi));
+	rtecg_pti s;
+	memset(&s, 0, sizeof(rtecg_pti));
 	return s;
 }
 
-rtecg_ptmwi rtecg_ptmwi_hx0(rtecg_ptmwi s, rtecg_int x0)
+rtecg_pti rtecg_pti_hx0(rtecg_pti s, rtecg_int x0)
 {
 	s.sum += x0;
 	s.sum -= s.xs[s.ptr];
@@ -114,9 +114,48 @@ rtecg_ptmwi rtecg_ptmwi_hx0(rtecg_ptmwi s, rtecg_int x0)
 	return s;
 }
 
-rtecg_int rtecg_ptmwi_y0(rtecg_ptmwi s)
+rtecg_int rtecg_pti_y0(rtecg_pti s)
 {
 	return s.sum / RTECG_MWILEN;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+// identify peaks
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+rtecg_pk rtecg_pk_init(void)
+{
+	rtecg_pk s;
+	memset(&s, 0, sizeof(rtecg_pk));
+	s.xm82 = RTECG_PKKNEIGH;
+	return s;
+}
+
+rtecg_pk rtecg_pk_mark(rtecg_pk s, rtecg_int x0)
+{
+	rtecg_int xm82 = s.xs[s.xm82];
+	s.xs[s.xm82] = 0;
+	s.xm82_ispeak = 1;
+	for(int i = 0; i < RTECG_PKWINLEN; i++){
+		if(s.xs[i] > xm82){
+			s.xm82_ispeak = 0;
+			break;
+		}
+	}
+	s.xs[s.xm82] = xm82;
+	s.xs[s.xm165] = x0;
+	if(++(s.xm165) == RTECG_PKWINLEN){
+		s.xm165 = 0;
+	}
+	if(++(s.xm82) == RTECG_PKWINLEN){
+		s.xm82 = 0;
+	}
+	return s;
+}
+
+rtecg_int rtecg_pk_havepk(rtecg_pk s)
+{
+	return s.xm82_ispeak;
 }
 
 /*
