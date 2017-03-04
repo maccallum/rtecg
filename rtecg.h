@@ -18,7 +18,6 @@ typedef int rtecg_int;
 // buffer lengths
 #define RTECG_LPBUFLEN ((RTECG_MTOS(25)) * 2) // low pass buffer length
 #define RTECG_HPBUFLEN RTECG_MTOS(125) // high pass buffer length
-//#define RTECG_DERIVLEN ((RTECG_MTOS(10)) | 1)  // derivative length
 #define RTECG_DERIVLEN RTECG_MTOS(10)  // derivative length
 #define RTECG_MWILEN RTECG_MTOS(80) // moving window integration length
 #define RTECG_PKWINLEN ((RTECG_MTOS(165)) | 1) // length of window to search for peaks in

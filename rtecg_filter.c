@@ -134,16 +134,34 @@ rtecg_pk rtecg_pk_init(void)
 rtecg_pk rtecg_pk_mark(rtecg_pk s, rtecg_int x0)
 {
 	rtecg_int xm82 = s.xs[s.xm82];
-	s.xs[s.xm82] = 0;
-	s.xm82_ispeak = 1;
+	rtecg_int maxslope = 0; // only interested in positive slopes
+	s.y0 = 1;
+	rtecg_int ptr = s.xm165;
+	rtecg_int last;
+	if(ptr == 0){
+		last = s.xs[RTECG_PKWINLEN - 1];
+	}else{
+		last = s.xs[ptr - 1];
+	}
 	for(int i = 0; i < RTECG_PKWINLEN; i++){
 		if(s.xs[i] > xm82){
-			s.xm82_ispeak = 0;
+			s.y0 = 0;
+			maxslope = 0;
 			break;
 		}
+		if(i > 0){
+			rtecg_int slope = s.xs[ptr] - last;
+			if(slope > maxslope){
+				maxslope = slope;
+			}
+		}
+		last = s.xs[ptr];
+		if(++(ptr) == RTECG_PKWINLEN){
+			ptr = 0;
+		}
 	}
-	s.xs[s.xm82] = xm82;
 	s.xs[s.xm165] = x0;
+	s.maxslope = maxslope;
 	if(++(s.xm165) == RTECG_PKWINLEN){
 		s.xm165 = 0;
 	}
@@ -153,9 +171,23 @@ rtecg_pk rtecg_pk_mark(rtecg_pk s, rtecg_int x0)
 	return s;
 }
 
-rtecg_int rtecg_pk_havepk(rtecg_pk s)
+rtecg_int rtecg_pk_y0(rtecg_pk s)
 {
-	return s.xm82_ispeak;
+	return s.y0;
+}
+
+rtecg_int rtecg_pk_xm82(rtecg_pk s)
+{
+	if(rtecg_pk_y0(s)){
+		return s.xs[s.xm82];
+	}else{
+		return 0;
+	}
+}
+
+rtecg_int rtecg_pk_maxslope(rtecg_pk s)
+{
+	return s.maxslope;
 }
 
 /*

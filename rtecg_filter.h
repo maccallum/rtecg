@@ -37,7 +37,8 @@ typedef struct _rtecg_pk
 {
 	rtecg_int xs[RTECG_PKWINLEN];
 	rtecg_int xm165, xm82;
-	rtecg_int xm82_ispeak;
+	rtecg_int y0;
+	rtecg_int maxslope;
 } rtecg_pk;
 
 rtecg_ptlp rtecg_ptlp_init(void);
@@ -58,7 +59,9 @@ rtecg_int rtecg_pti_y0(rtecg_pti s);
 
 rtecg_pk rtecg_pk_init(void);
 rtecg_pk rtecg_pk_mark(rtecg_pk s, rtecg_int x0);
-rtecg_int rtecg_pk_havepk(rtecg_pk s);
+rtecg_int rtecg_pk_y0(rtecg_pk s);
+rtecg_int rtecg_pk_xm82(rtecg_pk s);
+rtecg_int rtecg_pk_maxslope(rtecg_pk s);
 
 /*
 typedef struct _rtecg_bq
