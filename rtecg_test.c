@@ -81,7 +81,7 @@ int main(int ac, char **av)
 
 	int n = sizeof(testdat) / sizeof(int);
 	//char *keys[] = {"raw", "filt1", "filt2", "filt3", "filt4", "filt5", "filt6", "dsq", "mwi", "raw_peaks", "mwi_peaks"};
-	char *keys[] = {"raw", "lp", "hp", "mwi", "peaksf", "peaksi", "spkf", "npkf", "spki", "npki", "f1", "f2", "i1", "i2"};
+	char *keys[] = {"raw", "lp", "hp", "mwi", "peaksf", "peaksi", "spkf", "npkf", "spki", "npki", "f1", "f2", "i1", "i2", "rr", "rravg1", "rravg2"};
 	rtecg_float out[sizeof(keys) / sizeof(char*)][n];
 	memset(out, 0, (sizeof(keys) / sizeof(char*)) * n * sizeof(rtecg_float));
 	for(int i = 0; i < n; i++){
@@ -103,7 +103,10 @@ int main(int ac, char **av)
 		F1,
 		F2,
 		I1,
-		I2
+		I2,
+		RR,
+		RRAVG1,
+		RRAVG2
 	};
 	const int FILT = HP;
 	
@@ -262,6 +265,9 @@ int main(int ac, char **av)
 		out[F2][i] = pt2s.f2;
 		out[I1][i] = pt2s.i1;
 		out[I2][i] = pt2s.i2;
+		out[RR][i] = pt2s.rr * 60.;
+		out[RRAVG1][i] = pt2s.rravg1 * 60.;
+		out[RRAVG2][i] = pt2s.rravg2 * 60.;
 		/*
 		out[SPKF][pts.last_spkf] = 1;
 		out[SPKI][pts.last_spki] = 1;

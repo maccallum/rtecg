@@ -33,8 +33,6 @@ typedef int rtecg_int;
 #define RTECG_BURNLEN RTECG_MTOS(6000) // burn in length
 // have to add search back, debounce
 
-
-
 #ifdef __cplusplus
 }
 #endif

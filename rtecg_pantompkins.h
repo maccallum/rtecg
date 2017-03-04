@@ -44,6 +44,13 @@ typedef struct _rtecg_pt2
 	rtecg_ctr ctr;
 	rtecg_spk last_spkf, last_spki;
 	rtecg_int havepeak;
+	rtecg_float rr;
+	rtecg_float rrbuf1[8], rrbuf2[8];
+	rtecg_int rrptr1, rrptr2;
+	rtecg_float rrsum1, rrsum2;
+	rtecg_float rravg1, rravg2;
+	rtecg_int burn_avg2;
+	rtecg_int havefirstpeak;
 } rtecg_pt2;
 
 rtecg_pt2 rtecg_pt2_init(void);

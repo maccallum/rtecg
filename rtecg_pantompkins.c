@@ -48,6 +48,7 @@ rtecg_pt2 rtecg_pt2_init(void)
 {
 	rtecg_pt2 s;
 	memset(&s, 0, sizeof(rtecg_pt2));
+	s.burn_avg2 = 1;
 	return s;
 }
 
@@ -120,7 +121,7 @@ rtecg_pt2 rtecg_pt2_process(rtecg_pt2 s, rtecg_int pkf, rtecg_int maxslopef, rte
 					s.ptri++;
 				}else if(s.ctr - s.last_spki.x < RTECG_MTOS(360) && (float)maxslopei / (float)s.last_spki.maxslope < 0.5){
 					// could be a T-wave---compare slope with slope of last peak
-					pd2("\t-> peak is %d samples after previous peak; more than 200ms (%d samples), but less than 360ms (%d samples). slope of previous peak is %d, slope of this peak is %d (%f)\n", s.ctr - s.last_spki.x, RTECG_MTOS(200), RTECG_MTOS(360), s.last_spki.maxslope, maxslopei, (float)maxslopei / (float)s.last_spki.maxslope);
+					pd2("\t-> peak is %d samples after previous peak; more than 200ms (%d samples), but less than 360ms (%d samples). slope of previous peak is %d, slope of this peak is %d (%f)\n", s.ctr - s.last_spki.x, RTECG_MTOS(200), RTECG_MTOS(360), s.last_spki.maxslope, maxslopei, (rtecg_float)maxslopei / (rtecg_float)s.last_spki.maxslope);
 					s.tnpki = 0.125 * s.pki[s.ptri].y + .875 * s.tnpki;
 					s.ti1 = s.tnpki + .25 * (s.tspki - s.tnpki);
 					s.ti2 = s.ti1 * .5;
@@ -128,10 +129,47 @@ rtecg_pt2 rtecg_pt2_process(rtecg_pt2 s, rtecg_int pkf, rtecg_int maxslopef, rte
 				}else{
 					s.havepeak = 1;
 					pd2("\t-> we have a peak!\n\t\tin the filtered signal, its value is %d, and it's %d samples in the past\n\t\tin the mwi signal, its value is %d, and it's %d samples in the past\n", pkmax, s.ctr - s.pkf[pkidx].x, pki, 0);
-					// check to see if it occurred too soon since the last one
+					// compute rr interval
+					if(s.havefirstpeak){
+						rtecg_float rr = (s.pkf[pkidx].x - s.last_spkf.x) / (rtecg_float)RTECG_FS;
+						s.rr = rr;
+						pd2("\t-> rr = %f\n", rr);
+						// avg 1
+						s.rrsum1 += rr;
+						s.rrsum1 -= s.rrbuf1[s.rrptr1];
+						s.rrbuf1[s.rrptr1] = rr;
+						if(++(s.rrptr1) == 8){
+							s.rrptr1 = 0;
+						}
+						s.rravg1 = s.rrsum1 / 8.;
+						pd2("\t-> avg 1 = %f\n", s.rravg1);
+						if(s.burn_avg2){
+							pd2("\t-> %s", "burning avg2...\n");
+							// avg 2
+							s.rrsum2 += rr;
+							s.rrsum2 -= s.rrbuf2[s.rrptr2];
+							s.rrbuf2[s.rrptr2] = rr;
+							if(++(s.rrptr2) == 8){
+								s.rrptr2 = 0;
+								s.burn_avg2 = 0;
+							}
+							s.rravg2 = s.rrsum2 / 8.;
+						}else{
+							// avg 2
+							if(rr >= .92 * s.rravg2 && rr <= 1.16 * s.rravg2){
+								pd2("\t-> %f <= %f <= %f\n", .92 * s.rravg2, rr, 1.16 * s.rravg2);
+								s.rrsum2 += rr;
+								s.rrsum2 -= s.rrbuf2[s.rrptr2];
+								s.rrbuf2[s.rrptr2] = rr;
+								if(++(s.rrptr2) == 8){
+									s.rrptr2 = 0;
+								}
+								s.rravg2 = s.rrsum2 / 8.;
+							}
+						}
+						pd2("\t-> avg 2 = %f\n", s.rravg2);
+					}
 					// record peaks
-					//s.last_spkf = (struct pt){s.ctr - s.pkf[pkidx].x, s.pkf[pkidx].y};
-					//s.last_spki = (struct pt){s.ctr - s.pki[s.ptri].x, s.pki[s.ptri].y};
 					s.last_spkf = (rtecg_spk){s.pkf[pkidx].x, s.pkf[pkidx].y, maxslopef};
 					s.last_spki = (rtecg_spk){s.pki[s.ptri].x, s.pki[s.ptri].y, maxslopei};
 					// update noise estimates for filtered signal
@@ -144,11 +182,6 @@ rtecg_pt2 rtecg_pt2_process(rtecg_pt2 s, rtecg_int pkf, rtecg_int maxslopef, rte
 						s.tnpkf = 0.125 * s.pkf[s.tptrf].y + .875 * s.tnpkf;
 						s.tptrf++;
 					}
-					// update noise estimates for mwi
-					//while(s.tptri < s.ptri){
-					//s.tnpki = 0.125 * s.pki[s.ptri].y + .875 * s.tnpki;
-					//s.tptri++;
-					//}
 					// update signal estimates for filtered signal and mwi
 					s.tspkf = .125 * s.pkf[pkidx].y + .875 * s.tspkf;
 					s.tspki = .125 * s.pki[s.ptri].y + .875 * s.tspki;
@@ -165,6 +198,8 @@ rtecg_pt2 rtecg_pt2_process(rtecg_pt2 s, rtecg_int pkf, rtecg_int maxslopef, rte
 					s.ptrf = 0;
 					s.tptrf = 0;
 					s.ptri = 0;
+					
+					s.havefirstpeak = 1;
 				}
 			}else{
 				
