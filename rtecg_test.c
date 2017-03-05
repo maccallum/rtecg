@@ -43,9 +43,9 @@ int main(int ac, char **av)
 		// filter
 		lp = rtecg_ptlp_hx0(lp, out[RAW][i]);
 		out[LP][i] = rtecg_ptlp_y0(lp);
-		hp = rtecg_pthp_hx0(hp, out[LP][i]);
+		hp = rtecg_pthp_hx0(hp, rtecg_ptlp_y0(lp));
 		out[HP][i] = rtecg_pthp_y0(hp);
-		d = rtecg_ptd_hx0(d, out[HP][i]);
+		d = rtecg_ptd_hx0(d, rtecg_pthp_y0(hp));
 		mwi = rtecg_pti_hx0(mwi, rtecg_ptd_y0(d));
 		out[MWI][i] = rtecg_pti_y0(mwi);
 		
@@ -68,9 +68,9 @@ int main(int ac, char **av)
 		out[F2][i] = pts.f2;
 		out[I1][i] = pts.i1;
 		out[I2][i] = pts.i2;
-		out[RR][i] = pts.rr * 60.;
-		out[RRAVG1][i] = pts.rravg1 * 60.;
-		out[RRAVG2][i] = pts.rravg2 * 60.;
+		out[RR][i] = (pts.rr / RTECG_FS) * 60.;
+		out[RRAVG1][i] = (pts.rravg1 / RTECG_FS) * 60.;
+		out[RRAVG2][i] = (pts.rravg2 / RTECG_FS) * 60.;
 	}
 
 	// write to file
