@@ -28,13 +28,19 @@ rtecg_pt rtecg_pt_process(rtecg_pt s,
 			  rtecg_ctr mwipos_r,
 			  rtecg_ctr mwilen);
 
+// the confidence value is crude at this point:
+// 1:		peakf >= f1 && peaki >= i1
+// .666:	peakf >= f2 && peaki >= i2 (searchback)
+// .333:	peakf >= f2 || peaki >= i2 (searchback)
+// 0: 		peakf < f2 && peaki < i2 (searchback)
 typedef struct _rtecg_spk
 {
 	rtecg_int x;
 	rtecg_int y;
 	rtecg_int maxslope;
+	rtecg_float confidence;
 } rtecg_spk;
-	
+
 typedef struct _rtecg_pt2
 {
 	rtecg_float spkf, spki, npkf, npki, f1, f2, i1, i2;

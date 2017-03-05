@@ -14,6 +14,7 @@ typedef int rtecg_int;
 #define RTECG_FS 200
 #define RTECG_MS_PER_SAMP (1000. / (double)RTECG_FS)
 #define RTECG_MTOS(ms)((rtecg_int)(((ms) / RTECG_MS_PER_SAMP) + 0.5))
+#define RTECG_STOM(samps)((rtecg_int)(samps * RTECG_MS_PER_SAMP))
 
 // buffer lengths
 #define RTECG_LPBUFLEN ((RTECG_MTOS(25)) * 2) // low pass buffer length
