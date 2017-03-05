@@ -26,6 +26,32 @@ rtecg_pt rtecg_pt_process(rtecg_pt s, rtecg_int pkf, rtecg_int maxslopef, rtecg_
 {
 	pl();
 	s.ctr++;
+	if(s.ctr < RTECG_PREBURNLEN){
+		return s;
+	}
+	if(s.ctr <= RTECG_PREBURNLEN + RTECG_BURNLEN){
+		if(pkf > s.last_spkf.y){
+			s.last_last_spkf = s.last_spkf;
+			s.last_spkf = (rtecg_spk){s.ctr, pkf, maxslopef, 0};
+		}
+		if(pki > s.last_spki.y){
+			s.last_last_spki = s.last_spki;
+			s.last_spki = (rtecg_spk){s.ctr, pki, maxslopei, 0};
+		}
+		if(s.ctr == RTECG_PREBURNLEN + RTECG_BURNLEN){
+			s.tspkf = s.spkf = (s.last_last_spkf.y + s.last_spkf.y) / 2.;
+			s.tspki = s.spki = (s.last_last_spki.y + s.last_spki.y) / 2.;
+			s.tnpkf = s.npkf = 0.25 * s.spkf;
+			s.tnpki = s.npki = 0.25 * s.spki;
+			//s.tnpkf = s.npkf = (out[FILT][inpkrf1] + out[FILT][inpkrf2]) / 2.;
+			//s.tnpki = s.npki = (out[MWI][inpkri1] + out[MWI][inpkri2]) / 2.;
+			s.f1 = s.npkf + .25 * (s.spkf - s.npkf);
+			s.f2 = s.f1 * .5;
+			s.i1 = s.npki + .25 * (s.spki - s.npki);
+			s.i2 = s.i1 * .5;
+		}
+		return s;
+	}
 	s.havepeak = 0;
 	if(pkf){
 		pd("+ FIL: %u %d\n", s.ctr, pkf);
@@ -151,6 +177,8 @@ rtecg_pt rtecg_pt_process(rtecg_pt s, rtecg_int pkf, rtecg_int maxslopef, rtecg_
 							pd("\t\t-> avg 2 = %f\n", s.rravg2);
 						}
 						// record peaks
+						s.last_last_spkf = s.last_spkf;
+						s.last_last_spki = s.last_spki;
 						s.last_spkf = (rtecg_spk){s.pkf[pkidx].x, s.pkf[pkidx].y, maxslopef, 1.};
 						s.last_spki = (rtecg_spk){s.pki[s.ptri].x, s.pki[s.ptri].y, maxslopei, 1.};
 						// update noise estimates for filtered signal
@@ -276,6 +304,8 @@ rtecg_pt rtecg_pt_process(rtecg_pt s, rtecg_int pkf, rtecg_int maxslopef, rtecg_
 				c += 1. / 3.;
 			}
 			pd("\t\t-> %d %d, confidence: %f\n", s.pki[pkiidx].x, s.pki[pkiidx].y, c);
+			s.last_last_spkf = s.last_spkf;
+			s.last_last_spki = s.last_spki;
 			s.last_spkf = (rtecg_spk){s.pkf[pkfidx].x, s.pkf[pkfidx].y, s.pkf[pkfidx].maxslope, c};
 			s.last_spki = (rtecg_spk){s.pki[pkiidx].x, s.pki[pkiidx].y, s.pki[pkiidx].maxslope, c};
 			// update signal estimates for filtered signal and mwi

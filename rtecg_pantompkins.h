@@ -30,7 +30,7 @@ typedef struct _rtecg_pt
 	rtecg_spk pkf[RTECG_PT_HISTLEN], pki[RTECG_PT_HISTLEN];
 	rtecg_int ptrf, tptrf, ptri;
 	rtecg_ctr ctr;
-	rtecg_spk last_spkf, last_spki;
+	rtecg_spk last_spkf, last_spki, last_last_spkf, last_last_spki;
 	rtecg_int havepeak;
 	rtecg_float rr;
 	rtecg_float rrbuf1[8], rrbuf2[8];

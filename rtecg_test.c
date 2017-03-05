@@ -120,6 +120,7 @@ int main(int ac, char **av)
 	rtecg_pk pki = rtecg_pk_init();
 	rtecg_pt pts = rtecg_pt_init();
 
+	/*
 	// burn in
 	rtecg_ctr ispkf1 = 0, inpkrf1 = 0, ispki1 = 0, inpkri1 = 0;
 	for(int i = RTECG_MTOS(PREBURNLEN_MS); i < RTECG_MTOS(BURNLEN_MS); i++){
@@ -154,42 +155,12 @@ int main(int ac, char **av)
 	ispki1 = get_max_in_range(out[MWI], RTECG_MTOS(PREBURNLEN_MS), RTECG_MTOS(PREBURNLEN_MS) + RTECG_MTOS(BURNLEN_MS / 2));//200, 600);
 	inpkrf1 = get_max_in_range(out[FILT], ispkf1 + RTECG_MTOS(200), ispkf1 + RTECG_MTOS(360));
 	inpkri1 = get_max_in_range(out[MWI], ispki1 + RTECG_MTOS(200), ispki1 + RTECG_MTOS(360));
-	/*
-	for(int i = 1; i < 100; i++){
-		if(out[PKF][i + ispkf1]){
-			inpkrf1 = i + ispkf1;
-		}
-		if(out[PKI][i + ispki1]){
-			inpkri1 = i + ispki1;
-		}
-	}
-	*/
-	
-	/* printf("%d\n", ispkf1); */
-	/* printf("%d\n", inpkrf1); */
-	/* printf("%d\n", ispki1); */
-	/* printf("%d\n", inpkri1); */
 
 	rtecg_ctr ispkf2 = 0, inpkrf2 = 0, ispki2 = 0, inpkri2 = 0;
 	ispkf2 = get_max_in_range(out[FILT], RTECG_MTOS(PREBURNLEN_MS) + RTECG_MTOS(BURNLEN_MS / 2), RTECG_MTOS(PREBURNLEN_MS) + RTECG_MTOS(BURNLEN_MS));//200, 600);
 	ispki2 = get_max_in_range(out[MWI], RTECG_MTOS(PREBURNLEN_MS) + RTECG_MTOS(BURNLEN_MS / 2), RTECG_MTOS(PREBURNLEN_MS) + RTECG_MTOS(BURNLEN_MS));//200, 600);
 	inpkrf2 = get_max_in_range(out[FILT], ispkf2 + RTECG_MTOS(200), ispkf2 + RTECG_MTOS(360));
 	inpkri2 = get_max_in_range(out[MWI], ispki2 + RTECG_MTOS(200), ispki2 + RTECG_MTOS(360));
-	/*
-	for(int i = 1; i < 100; i++){
-		if(out[PKF][i + ispkf2]){
-			inpkrf2 = i + ispkf2;
-		}
-		if(out[PKI][i + ispki2]){
-			inpkri2 = i + ispki2;
-		}
-	}
-	*/
-	/* printf("******\n"); */
-	/* printf("%d\n", ispkf2); */
-	/* printf("%d\n", inpkrf2); */
-	/* printf("%d\n", ispki2); */
-	/* printf("%d\n", inpkri2); */
 
 	memset(out[PKF], 0, n * sizeof(rtecg_float));
 	memset(out[PKI], 0, n * sizeof(rtecg_float));
@@ -216,7 +187,9 @@ int main(int ac, char **av)
 
 	memcpy(out[SPKF], out[PKF], n * sizeof(rtecg_float));
 	memcpy(out[SPKI], out[PKI], n * sizeof(rtecg_float));
-	for(int i = RTECG_MTOS(BURNLEN_MS); i < n; i++){
+	*/
+	//for(int i = RTECG_MTOS(BURNLEN_MS); i < n; i++){
+	for(int i = 0; i < n; i++){
 		// filter
 		//out[LP][i] = rtecg_ptlp_hx0(out[RAW], i, n, out[LP], i, n);
 		//out[HP][i] = rtecg_pthp_hx0(out[LP], i, n, out[HP], i, n);
