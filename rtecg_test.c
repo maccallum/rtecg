@@ -119,7 +119,6 @@ int main(int ac, char **av)
 	rtecg_pk pkf = rtecg_pk_init();
 	rtecg_pk pki = rtecg_pk_init();
 	rtecg_pt pts = rtecg_pt_init();
-	rtecg_pt2 pt2s = rtecg_pt2_init();
 
 	// burn in
 	rtecg_ctr ispkf1 = 0, inpkrf1 = 0, ispki1 = 0, inpkri1 = 0;
@@ -204,25 +203,16 @@ int main(int ac, char **av)
 	out[PKI][ispki2 + RTECG_PKDEL] = 1;
 	out[PKI][inpkri2 + RTECG_PKDEL] = 1;
 
-	pts.spkf = (out[FILT][ispkf1] + out[FILT][ispkf2]) / 2.;
-	pts.npkf = (out[FILT][inpkrf1] + out[FILT][inpkrf2]) / 2.;
-	pts.spki = (out[MWI][ispki1] + out[MWI][ispki2]) / 2.;
-	pts.npki = (out[MWI][inpkri1] + out[MWI][inpkri2]) / 2.;
+	pts.tspkf = pts.spkf = (out[FILT][ispkf1] + out[FILT][ispkf2]) / 2.;
+	pts.tnpkf = pts.npkf = (out[FILT][inpkrf1] + out[FILT][inpkrf2]) / 2.;
+	pts.tspki = pts.spki = (out[MWI][ispki1] + out[MWI][ispki2]) / 2.;
+	pts.tnpki = pts.npki = (out[MWI][inpkri1] + out[MWI][inpkri2]) / 2.;
 	pts.f1 = pts.npkf + .25 * (pts.spkf - pts.npkf);
 	pts.f2 = pts.f1 * .5;
 	pts.i1 = pts.npki + .25 * (pts.spki - pts.npki);
 	pts.i2 = pts.i1 * .5;
 
-	pt2s.tspkf = pt2s.spkf = (out[FILT][ispkf1] + out[FILT][ispkf2]) / 2.;
-	pt2s.tnpkf = pt2s.npkf = (out[FILT][inpkrf1] + out[FILT][inpkrf2]) / 2.;
-	pt2s.tspki = pt2s.spki = (out[MWI][ispki1] + out[MWI][ispki2]) / 2.;
-	pt2s.tnpki = pt2s.npki = (out[MWI][inpkri1] + out[MWI][inpkri2]) / 2.;
-	pt2s.f1 = pt2s.npkf + .25 * (pt2s.spkf - pt2s.npkf);
-	pt2s.f2 = pt2s.f1 * .5;
-	pt2s.i1 = pt2s.npki + .25 * (pt2s.spki - pt2s.npki);
-	pt2s.i2 = pt2s.i1 * .5;
-
-	pt2s.ctr = RTECG_MTOS(BURNLEN_MS) - 1;//1199;
+	pts.ctr = RTECG_MTOS(BURNLEN_MS) - 1;//1199;
 
 	memcpy(out[SPKF], out[PKF], n * sizeof(rtecg_float));
 	memcpy(out[SPKI], out[PKI], n * sizeof(rtecg_float));
@@ -255,19 +245,18 @@ int main(int ac, char **av)
 		pki = rtecg_pk_mark(pki, rtecg_pti_y0(mwi));
 		out[PKI][i] = rtecg_pk_y0(pki);
 
-		pts = rtecg_pt_process(pts, out[HP], out[PKF], i, n, out[MWI], out[PKI], i, n);
-		pt2s = rtecg_pt2_process(pt2s, rtecg_pk_y0(pkf) * rtecg_pk_xm82(pkf), rtecg_pk_maxslope(pkf), rtecg_pk_y0(pki) * rtecg_pk_xm82(pki), rtecg_pk_maxslope(pki));
-	  	if(pt2s.havepeak){
-			out[SPKF][i - rtecg_pt2_last_spkf(pt2s).x] = 1;
-			out[SPKI][i - rtecg_pt2_last_spki(pt2s).x] = 1;
+		pts = rtecg_pt_process(pts, rtecg_pk_y0(pkf) * rtecg_pk_xm82(pkf), rtecg_pk_maxslope(pkf), rtecg_pk_y0(pki) * rtecg_pk_xm82(pki), rtecg_pk_maxslope(pki));
+	  	if(pts.havepeak){
+			out[SPKF][i - rtecg_pt_last_spkf(pts).x] = 1;
+			out[SPKI][i - rtecg_pt_last_spki(pts).x] = 1;
 		}
-		out[F1][i] = pt2s.f1;
-		out[F2][i] = pt2s.f2;
-		out[I1][i] = pt2s.i1;
-		out[I2][i] = pt2s.i2;
-		out[RR][i] = pt2s.rr * 60.;
-		out[RRAVG1][i] = pt2s.rravg1 * 60.;
-		out[RRAVG2][i] = pt2s.rravg2 * 60.;
+		out[F1][i] = pts.f1;
+		out[F2][i] = pts.f2;
+		out[I1][i] = pts.i1;
+		out[I2][i] = pts.i2;
+		out[RR][i] = pts.rr * 60.;
+		out[RRAVG1][i] = pts.rravg1 * 60.;
+		out[RRAVG2][i] = pts.rravg2 * 60.;
 		/*
 		out[SPKF][pts.last_spkf] = 1;
 		out[SPKI][pts.last_spki] = 1;
