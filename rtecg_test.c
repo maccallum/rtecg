@@ -8,7 +8,7 @@
 #include "rtecg_filter.h"
 #include "rtecg_peak.h"
 #include "rtecg_pantompkins.h"
-#include "testdat.h"
+#include "testdat2.h"
 
 #define FS 200
 #define PREBURNLEN_MS 500
@@ -18,7 +18,7 @@ void print_defines(void);
 
 int main(int ac, char **av)
 {
-	//print_defines();
+	print_defines();
 	int n = sizeof(testdat) / sizeof(int);
 	char *keys[] = {"raw", "lp", "hp", "mwi", "peaksf", "peaksi", "spkf", "npkf", "spki", "npki", "f1", "f2", "i1", "i2", "rr", "rravg1", "rravg2"};
 	rtecg_float out[sizeof(keys) / sizeof(char*)][n];
@@ -68,9 +68,9 @@ int main(int ac, char **av)
 		out[F2][i] = pts.f2;
 		out[I1][i] = pts.i1;
 		out[I2][i] = pts.i2;
-		out[RR][i] = (pts.rr / RTECG_FS) * 60.;
-		out[RRAVG1][i] = (pts.rravg1 / RTECG_FS) * 60.;
-		out[RRAVG2][i] = (pts.rravg2 / RTECG_FS) * 60.;
+		out[RR][i] = pts.rr ? 60. / (pts.rr / RTECG_FS) : 0;
+		out[RRAVG1][i] = pts.rravg1 ? 60. / (pts.rravg1 / RTECG_FS) : 0;
+		out[RRAVG2][i] = pts.rravg2 ? 60. / (pts.rravg2 / RTECG_FS) : 0;
 	}
 
 	// write to file

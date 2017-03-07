@@ -7,8 +7,7 @@ extern "C" {
 
 #include "rtecg.h"
 
-#define RTECG_PT_HISTLEN 4096 // number of candidate peaks to keep around
-#define RTECG_PT_MAX_DIST_BTN_MWI_AND_FILT 40 // maximum number of samples between a candidate peak in filt and mwi
+#define RTECG_PT_HISTLEN 24 // number of candidate peaks to keep around
 
 // the confidence value is crude at this point:
 // 1:		peakf >= f1 && peaki >= i1
@@ -37,8 +36,9 @@ typedef struct _rtecg_pt
 	rtecg_int rrptr1, rrptr2;
 	rtecg_float rrsum1, rrsum2;
 	rtecg_float rravg1, rravg2;
-	rtecg_int burn_avg2;
+	rtecg_int burn_avg1, burn_avg2;
 	rtecg_int havefirstpeak;
+	rtecg_int searchback;
 } rtecg_pt;
 
 rtecg_pt rtecg_pt_init(void);

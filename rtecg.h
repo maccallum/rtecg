@@ -7,9 +7,9 @@ extern "C" {
 
 #include <inttypes.h>
 
-typedef double rtecg_float;
 typedef uint32_t rtecg_ctr;
 typedef int rtecg_int;
+typedef float rtecg_float;
 
 #define RTECG_FS 200
 #define RTECG_MS_PER_SAMP (1000. / (double)RTECG_FS)
@@ -21,7 +21,8 @@ typedef int rtecg_int;
 #define RTECG_HPBUFLEN RTECG_MTOS(125) // high pass buffer length
 #define RTECG_DERIVLEN RTECG_MTOS(10)  // derivative length
 #define RTECG_MWILEN RTECG_MTOS(80) // moving window integration length
-#define RTECG_PKWINLEN ((RTECG_MTOS(165)) | 1) // length of window to search for peaks in
+//#define RTECG_PKWINLEN ((RTECG_MTOS(165)) | 1) // length of window to search for peaks in
+#define RTECG_PKWINLEN ((RTECG_MTOS(100)) | 1) // length of window to search for peaks in
 #define RTECG_PKKNEIGH (((RTECG_PKWINLEN) - 1) / 2) // number of samples to the left and right of candidate peak
 // delays incurred at each stage of processing
 #define RTECG_LPDEL (((RTECG_LPBUFLEN) / 2) - 1) // number of samples delay for lp filter
@@ -33,6 +34,11 @@ typedef int rtecg_int;
 // burn in 
 #define RTECG_PREBURNLEN RTECG_MTOS(500)
 #define RTECG_BURNLEN RTECG_MTOS(2500) // burn in length
+
+#define RTECG_LIMIT_BPM_INCREASES
+#ifdef RTECG_LIMIT_BPM_INCREASES
+#define RTECG_MAX_BPM_INCREASE 1.6
+#endif
 
 
 #ifdef __cplusplus
