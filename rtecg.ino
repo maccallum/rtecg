@@ -1,6 +1,7 @@
 #include <ESP8266WiFi.h>
 #include <WiFiUdp.h>
 #include <SPI.h>
+#include <TimeLib.h>
 /* #ifdef ESP8266 */
 /* extern "C" { */
 /* #include "user_interface.h" */
@@ -9,6 +10,10 @@
 #include "rtecg.h"
 #include "rtecg_filter.h"
 #include "rtecg_pantompkins.h"
+
+//#define ECG_DEBUG
+//#define ECG_WIFI
+#define ECG_SERIAL
 
 // prefix for all OSC addresses
 char *oscpfx = "/aa"; // must be 3 or fewer characters
@@ -54,18 +59,21 @@ char resetbndl[] = {'#', 'b', 'u', 'n', 'd', 'l', 'e', 0, 0, 0, 0, 0, 0, 0, 0, 0
 // bundle with a single time tag that we send to the client so that they can do some statistics on the network traffic in response to pressing the flash button
 char timestampbndl[] = {'#', 'b', 'u', 'n', 'd', 'l', 'e', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 20, oscpfx[0], oscpfx[1], oscpfx[2], '/', 't', 0, 0, 0, ',', 't', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
+#ifdef ECG_WIFI
 // WIFI AP
 char ssid[] = "TP-LINK_40FE00";
 char pass[] = "78457393";
+//const char ssid[] = "Bbox-04B70355";  //  your network SSID (name)
+//const char pass[] = "AF6F326273676C1466C21AA45DEC43";       // your network password
 
 // WiFi remote host
 WiFiUDP udp;                                // A UDP instance to let us send and receive packets over UDP
 const IPAddress remote_ip(192,168,0,100);        // remote IP of your computer
 const unsigned int remote_port = 9999;          // remote port to receive OSC
 
-//#define ECG_DEBUG
-//#define ECG_WIFI
-#define ECG_SERIAL
+IPAddress ntp_time_server(209, 208, 79, 69); // pool.ntp.org
+const int timeZone = 0;
+#endif
 
 typedef struct _osctime
 {
@@ -314,6 +322,15 @@ osctime DS3234_date_to_osctime(struct DS3234_date d)
 	return time;
 }
 
+osctime timenow()
+{
+	noInterrupts();
+	osctime now = DS3234_date_to_osctime(DS3234_get_date());
+	now.fractionofseconds = (uint32_t)(0xFFFFFFFFUL * ((micros() - micros_ref) / 1000000.));
+	interrupts();
+	return now;
+}
+
 // flags are: A1M1 (seconds), A1M2 (minutes), A1M3 (hour),
 // A1M4 (day) 0 to enable, 1 to disable, DY/DT (dayofweek == 1/dayofmonth == 0)
 void DS3234_set_a1(const uint8_t pin, const uint8_t s, const uint8_t mi, const uint8_t h, const uint8_t d, const uint8_t * flags)
@@ -343,18 +360,305 @@ void osc_timetag_encodeForHeader(osctime t, char *buf)
 	*((uint32_t *)p2) = hton32(*((uint32_t *)ttp2));
 }
 
-osctime now()
+//Function isleap:  Determines if year is a leap year or not, without using modulo.
+//Year is a leap year if year mod 400 = 0, OR if (year mod 4 = 0 AND year mod 100 <> 0).
+unsigned short int osc_timetag_isleap(unsigned short int year)
 {
-	noInterrupts();
-	osctime now = DS3234_date_to_osctime(DS3234_get_date());
-	now.fractionofseconds = (uint32_t)(0xFFFFFFFFUL * ((micros() - micros_ref) / 1000000.));
-	interrupts();
-	return now;
+	short int yrtest;
+	yrtest=year;
+
+	//year modulo 400 = 0? if so, it's a leap year
+	while(yrtest>0){
+		yrtest-=400;
+	}
+	if(yrtest==0){ //then year modulo 400 = 0
+		return 1; //it's a leap year
+	}
+	yrtest=year;
+
+	//year modulo 4 = 0 and year modulo 100 <>0? if so, it's a leap year
+	while(yrtest>0){
+		yrtest-=4;
+	}
+	if(yrtest==0){ //then year modulo 4 = 0
+		yrtest=year;
+		while(yrtest>0){  //so test for modulo 100
+			yrtest-=100;
+		}
+		if(yrtest<0){  //then year modulo 100 <>0
+			return 1; //it's a leap year
+		}else{
+			return 0; //not a leap year
+		}
+	}else{
+		return 0;  //year modulo 4 <> 0, not a leap year
+	}
+}
+
+//Function getmonth computes the month and day of month given the day of the year,
+//accounting for leap years
+unsigned short int osc_timetag_getmonth(unsigned short int *day, unsigned short int leap)
+{
+	const unsigned short int mJAN = 1;
+	const unsigned short int mFEB = 2;
+	const unsigned short int mMAR = 3;
+	const unsigned short int mAPR = 4;
+	const unsigned short int mMAY = 5;
+	const unsigned short int mJUN = 6;
+	const unsigned short int mJUL = 7;
+	const unsigned short int mAUG = 8;
+	const unsigned short int mSEP = 9;
+	const unsigned short int mOCT = 10;
+	const unsigned short int mNOV = 11;
+	const unsigned short int mDEC = 12;
+
+	unsigned short int JAN_LAST = 31;
+	unsigned short int FEB_LAST = 59;
+	unsigned short int MAR_LAST = 90;
+	unsigned short int APR_LAST = 120;
+	unsigned short int MAY_LAST = 151;
+	unsigned short int JUN_LAST = 181;
+	unsigned short int JUL_LAST = 212;
+	unsigned short int AUG_LAST = 243;
+	unsigned short int SEP_LAST = 273;
+	unsigned short int OCT_LAST = 304;
+	unsigned short int NOV_LAST = 334;
+	unsigned short int DEC_LAST = 365;
+
+	//correct monthly end dates for leap years (leap=1=leap year, 0 otherwise)
+	if(leap > 0){
+		if(leap <= 1){
+			FEB_LAST += leap;
+			MAR_LAST += leap;
+			APR_LAST += leap;
+			MAY_LAST += leap;
+			JUN_LAST += leap;
+			JUL_LAST += leap;
+			AUG_LAST += leap;
+			SEP_LAST += leap;
+			OCT_LAST += leap;
+			NOV_LAST += leap;
+			DEC_LAST += leap;
+
+		}else if(leap > 1){ //error condition
+			return 0;
+		}
+	}else if(leap < 0){  //error condition
+		return 0;
+	}
+	//Determine month & day of month from day of year
+	if(*day <= JAN_LAST){
+		return mJAN;  //day is already correct
+	}else if(*day <= FEB_LAST){
+		*day -= JAN_LAST;
+		return mFEB;
+	}else if(*day <= MAR_LAST){
+		*day -= (FEB_LAST);
+		return mMAR;
+	}else if(*day <= APR_LAST){
+		*day -= (MAR_LAST);
+		return mAPR;
+	}else if(*day <= MAY_LAST){
+		*day -= (APR_LAST);
+		return mMAY;
+	}else if(*day <= JUN_LAST){
+		*day -= (MAY_LAST);
+		return mJUN;
+	}else if(*day <= JUL_LAST){
+		*day -= (JUN_LAST);
+		return mJUL;
+	}else if(*day <= AUG_LAST){
+		*day -= (JUL_LAST);
+		return mAUG;
+	}else if(*day <= SEP_LAST){
+		*day -= (AUG_LAST);
+		return mSEP;
+	}else if(*day <= OCT_LAST){
+		*day -= (SEP_LAST);
+		return mOCT;
+	}else if(*day <= NOV_LAST){
+		*day -= (OCT_LAST);
+		return mNOV;
+	}else if(*day <= DEC_LAST){
+		*day -= (NOV_LAST);
+		return mDEC;
+	}else{
+		return 0;
+	}
+}
+
+#define DWORD uint64_t
+struct DS3234_date  osctime_to_date(osctime timetag)
+{
+	char s1[20];
+	uint32_t secs = timetag.seconds;//osc_timetag_ntp_getSeconds(timetag);
+	unsigned short int year, month, day, hour, minute, yrcount, leap = 0;
+
+	const DWORD SEC_PER_YEAR = 31536000;
+	const DWORD SEC_PER_DAY = 86400;
+	const unsigned short int SEC_PER_HR = 3600;
+	const unsigned short int SEC_PER_MIN = 60;
+
+
+	//secs=-2208988800;//SNTPGetUTCSeconds();
+	//secs = abs(secs);
+	for(year = 0; secs >= SEC_PER_YEAR; year++){ //determine # years elapse since epoch
+		secs -= SEC_PER_YEAR;
+		if(osc_timetag_isleap(year)){
+			secs -= SEC_PER_DAY;
+		}
+	}
+	//year+=1970;  //1/1/1970, 00:00 is epoch
+	year += 1900;  //1/1/1900, 00:00 is ntp epoch
+	//for (yrcount=1970;yrcount<year;yrcount++) //scroll from 1970 to last year to find leap yrs.
+	/*
+      for(yrcount = 1900; yrcount < year; yrcount++){
+      leap = osc_timetag_isleap(yrcount);  
+      if(leap == 1){
+      secs -= SEC_PER_DAY;  //if it's a leap year, subtract a day's worth of seconds
+      }
+      } 
+	*/
+	leap = osc_timetag_isleap(year); //Is this a leap year?
+	unsigned short int JAN_LAST = 31;
+	unsigned short int FEB_LAST = 59;
+	unsigned short int MAR_LAST = 90;
+	unsigned short int APR_LAST = 120;
+	unsigned short int MAY_LAST = 151;
+	unsigned short int JUN_LAST = 181;
+	unsigned short int JUL_LAST = 212;
+	unsigned short int AUG_LAST = 243;
+	unsigned short int SEP_LAST = 273;
+	unsigned short int OCT_LAST = 304;
+	unsigned short int NOV_LAST = 334;
+	unsigned short int DEC_LAST = 365;
+	if(leap <= 1){
+		FEB_LAST += leap;
+		MAR_LAST += leap;
+		APR_LAST += leap;
+		MAY_LAST += leap;
+		JUN_LAST += leap;
+		JUL_LAST += leap;
+		AUG_LAST += leap;
+		SEP_LAST += leap;
+		OCT_LAST += leap;
+		NOV_LAST += leap;
+		DEC_LAST += leap;
+	}
+
+	for(day = 1; secs >= SEC_PER_DAY; day++){ //determine # days elapsed in current year
+		secs -= SEC_PER_DAY;
+	}
+	unsigned short int months[] = {JAN_LAST, FEB_LAST, MAR_LAST, APR_LAST, MAY_LAST, JUN_LAST, JUL_LAST, AUG_LAST, SEP_LAST, OCT_LAST, NOV_LAST, DEC_LAST};
+	unsigned short int mday = day;
+	for(int i = 0; i < 11; i++){
+		if(day < months[i] && i > 0){
+			mday -= months[i - 1];
+			break;
+		}
+	}
+	mday -= 1;
+
+	for(hour = 0; secs >= SEC_PER_HR; hour++){  //determine hours elapsed in current day
+		secs -= SEC_PER_HR;
+	}
+	for(minute = 0; secs >= SEC_PER_MIN; minute++){  //determine minutes elapsed in current hour
+		secs -= SEC_PER_MIN;
+	}
+
+	//The value of secs at the end of the minutes loop is the seconds elapsed in the
+	//current minute.
+	//Given the year & day of year, determine month & day of month
+	month = osc_timetag_getmonth(&day, leap);
+	return make_DS3234_date(secs, minute, hour, 0, mday, month, year);
+}
+
+const int NTP_PACKET_SIZE = 48; // NTP time is in the first 48 bytes of message
+byte packetBuffer[NTP_PACKET_SIZE]; //buffer to hold incoming & outgoing packets
+uint64_t theta_min = 0xFFFFFFFFFFFFFFFF;
+uint64_t delta_theta_min = 0;
+int nsyncntp = 0;
+unsigned long lastntpsync_micros = 0;
+
+void getNtpTime()
+{
+#ifdef ECG_WIFI
+	while (udp.parsePacket() > 0) ; // discard any previously received packets
+	Serial.println("Transmit NTP Request");
+	sendNTPpacket(ntp_time_server);
+	uint32_t beginWait = millis();
+	while (millis() - beginWait < 1500) {
+		int size = udp.parsePacket();
+		if (size >= NTP_PACKET_SIZE) {
+			Serial.println("Receive NTP Response");
+			udp.read(packetBuffer, NTP_PACKET_SIZE);  // read packet into the buffer
+
+			uint64_t t1 = ntoh64(*((uint64_t *)(packetBuffer + 16)));
+			uint64_t t2 = ntoh64(*((uint64_t *)(packetBuffer + 24)));
+			uint64_t t3 = ntoh64(*((uint64_t *)(packetBuffer + 32)));
+			uint64_t t4 = ntoh64(*((uint64_t *)(packetBuffer + 40)));
+			uint64_t delta = (t4 - t1) - (t3 - t2);
+			uint64_t theta = 0.5 * ((t2 - t1) - (t3 - t4));
+			if(theta < theta_min){
+				theta_min = theta;
+				delta_theta_min = delta;
+				// set time
+				osctime ttt = *((osctime *)&t4);
+				//ttt.seconds = ntoh32(ttt.seconds);
+				//ttt.fractionofseconds = ntoh32(ttt.fractionofseconds);
+				unsigned long tmillis = millis() + (1000000 - (((double)ttt.fractionofseconds / 0xFFFFFFFF) * 1000000));
+				ttt.seconds++;
+				while(millis() < tmillis) ;
+				DS3234_set_date(osctime_to_date(ttt));
+			}
+
+			
+		}
+	}
+	Serial.println("No NTP Response :-(");
+#endif
+}
+
+// send an NTP request to the time server at the given address
+void sendNTPpacket(IPAddress &address)
+{
+#ifdef ECG_WIFI
+	// set all bytes in the buffer to 0
+	memset(packetBuffer, 0, NTP_PACKET_SIZE);
+	// Initialize values needed to form NTP request
+	// (see URL above for details on the packets)
+	packetBuffer[0] = 0b11100011;   // LI, Version, Mode
+	packetBuffer[1] = 0;     // Stratum, or type of clock
+	packetBuffer[2] = 6;     // Polling Interval
+	packetBuffer[3] = 0xEC;  // Peer Clock Precision
+	// 8 bytes of zero for Root Delay & Root Dispersion
+	packetBuffer[12]  = 49;
+	packetBuffer[13]  = 0x4E;
+	packetBuffer[14]  = 49;
+	packetBuffer[15]  = 52;
+	// all NTP fields have been given values, now
+	// you can send a packet requesting a timestamp:
+	udp.beginPacket(address, 123); //NTP requests are to port 123
+	udp.write(packetBuffer, NTP_PACKET_SIZE);
+	udp.endPacket();
+#endif
+}
+
+void ntp_sync(void)
+{
+	Serial.print("NTP sync (");
+	Serial.print(nsyncntp);
+	Serial.println(")");
+	if(nsyncntp){
+		getNtpTime();
+		lastntpsync_micros = micros();
+		nsyncntp--;
+	}
 }
 
 void send_resetbndl()
 {
-	osc_timetag_encodeForHeader(now(), resetbndl + 8);
+	osc_timetag_encodeForHeader(timenow(), resetbndl + 8);
 #ifdef ECG_WIFI
 	udp.beginPacket(remote_ip, remote_port);
 	udp.write(resetbndl, sizeof(resetbndl));
@@ -368,7 +672,7 @@ void send_timestampbndls(void)
 	Serial.print(ntimestampbndls);
 	Serial.println(")");
 	if(ntimestampbndls){
-		osctime t = now();
+		osctime t = timenow();
 		osc_timetag_encodeForHeader(t, timestampbndl + (sizeof(timestampbndl) - 8));
 		lasttimestampbndl_micros = micros();
 #ifdef ECG_WIFI
@@ -378,11 +682,6 @@ void send_timestampbndls(void)
 #endif // ECG_WIFI
 		ntimestampbndls--;
 	}
-}
-
-void ntp_sync(void)
-{
-	Serial.println("NTP sync");
 }
 
 // isr for RTC alarm 1
@@ -395,7 +694,6 @@ void isr_a1()
 // isr to handle flash button press
 void isr_flash()
 {
-	Serial.println(digitalRead(pin_flash));
 	if(digitalRead(pin_flash) == LOW){
 		int_flash = 1;
 		int_flash_down_micros = micros();
@@ -490,10 +788,11 @@ void loop()
 		;
 	}
 	// get time and read pin
-	noInterrupts();
-	osctime now = DS3234_date_to_osctime(DS3234_get_date());
-	now.fractionofseconds = (uint32_t)(0xFFFFFFFFUL * ((micros() - micros_ref) / 1000000.));
-	interrupts();
+	osctime now = timenow();
+	/* noInterrupts(); */
+	/* osctime now = DS3234_date_to_osctime(DS3234_get_date()); */
+	/* now.fractionofseconds = (uint32_t)(0xFFFFFFFFUL * ((micros() - micros_ref) / 1000000.)); */
+	/* interrupts(); */
 	tlst[tptr] = now;
 	rtecg_int a0 = analogRead(A0);
 	// now yield
@@ -523,6 +822,7 @@ void loop()
 				delay(100);
 				digitalWrite(pin_led, HIGH);
 				// NTP sync
+				nsyncntp = 8;
 				ntp_sync();
 				int_flash = 0;
 			}
@@ -534,9 +834,16 @@ void loop()
 			int_flash = 0;
 		}
 	}
+	// send a timestamp bundle if we're in the middle of that
 	if(ntimestampbndls && micros() - lasttimestampbndl_micros >= 2000000){
 		send_timestampbndls();
 	}
+
+	// do an NTP sync if we're in the middle of that
+	if(nsyncntp && micros() - lastntpsync_micros >= 2000000){
+		ntp_sync();
+	}
+	
 	// filter ECG signal
         lp = rtecg_ptlp_hx0(lp, a0);
 	hp = rtecg_pthp_hx0(hp, rtecg_ptlp_y0(lp));
@@ -551,7 +858,6 @@ void loop()
 		pts = rtecg_pt_searchback(pts);
 	}
 	if(pts.havepeak){
-		Serial.println(pts.last_spki.x);
 		if(digitalRead(pin_flash) == HIGH){
 			digitalWrite(pin_led, LOW);		
 		}
