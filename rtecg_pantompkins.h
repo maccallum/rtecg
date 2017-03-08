@@ -43,6 +43,7 @@ typedef struct _rtecg_pt
 
 rtecg_pt rtecg_pt_init(void);
 rtecg_pt rtecg_pt_process(rtecg_pt s, rtecg_int pkf, rtecg_int maxslopef, rtecg_int pki, rtecg_int maxslopei);
+rtecg_pt rtecg_pt_searchback(rtecg_pt s);
 rtecg_spk rtecg_pt_last_spkf(rtecg_pt s);
 rtecg_spk rtecg_pt_last_spki(rtecg_pt s);
 

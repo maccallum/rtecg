@@ -3,7 +3,7 @@
 #include <string.h>
 #include <stdio.h>
 
-#define RTECG_PT_PRINTSTATE
+//#define RTECG_PT_PRINTSTATE
 #ifdef RTECG_PT_PRINTSTATE
 #define pl()printf("**************************************************\n");
 #define pd(fmt, ...)printf("%s(%d): "fmt, __func__, __LINE__, __VA_ARGS__);
@@ -254,124 +254,130 @@ rtecg_pt rtecg_pt_process(rtecg_pt s, rtecg_int pkf, rtecg_int maxslopef, rtecg_
 	}
 	if(s.havefirstpeak && s.havepeak == 0 && !s.burn_avg2 && rtecg_pt_last_spki(s).x > (s.rravg2 * 1.66)){
 		s.searchback = 1;
-		pd("%s\n", "SEARCHBACK");
-		rtecg_float spkf = s.spkf;
-		rtecg_float spki = s.spki;
-		rtecg_float npkf = s.npkf;
-		rtecg_float npki = s.npki;
-		rtecg_float f1 = s.f1;
-		rtecg_float f2 = s.f2;
-		rtecg_float i1 = s.i1;
-		rtecg_float i2 = s.i2;
-		rtecg_int ptri = 0;
-		rtecg_int pkimax = 0, pkiidx = -1;
-		rtecg_int pkfmax = 0, pkfidx = -1;
-		while(ptri < s.ptri){
-			rtecg_int x = s.pki[ptri].x;
-			rtecg_int y = s.pki[ptri].y;
-			// we don't care about this peak if there isn't a corresponding one in the filtered signal
-			rtecg_int ptrf = 0;
-			rtecg_int pkfmint = x - (RTECG_DERIVDEL + RTECG_MWIDEL);
-			rtecg_int pkfmaxt = x;
-			if(pkfmaxt < 0){
-				ptri++;
-				continue;
+	}
+	return s;
+}
+
+rtecg_pt rtecg_pt_searchback(rtecg_pt s)
+{
+	pd("%s\n", "SEARCHBACK");
+	rtecg_float spkf = s.spkf;
+	rtecg_float spki = s.spki;
+	rtecg_float npkf = s.npkf;
+	rtecg_float npki = s.npki;
+	rtecg_float f1 = s.f1;
+	rtecg_float f2 = s.f2;
+	rtecg_float i1 = s.i1;
+	rtecg_float i2 = s.i2;
+	rtecg_int ptri = 0;
+	rtecg_int pkimax = 0, pkiidx = -1;
+	rtecg_int pkfmax = 0, pkfidx = -1;
+	while(ptri < s.ptri){
+		rtecg_int x = s.pki[ptri].x;
+		rtecg_int y = s.pki[ptri].y;
+		// we don't care about this peak if there isn't a corresponding one in the filtered signal
+		rtecg_int ptrf = 0;
+		rtecg_int pkfmint = x - (RTECG_DERIVDEL + RTECG_MWIDEL);
+		rtecg_int pkfmaxt = x;
+		if(pkfmaxt < 0){
+			ptri++;
+			continue;
+		}
+		if(pkfmint < 0){
+			pkfmint = 0; 
+		}
+		while(s.pkf[ptrf].x < pkfmint && ptrf < s.ptrf){
+			ptrf++;
+		}
+		while(s.pkf[ptrf].x < pkfmaxt && ptrf < s.ptrf){
+			if(s.pkf[ptrf].y >= pkfmax){
+				pkfmax = s.pkf[ptrf].y;
+				pkfidx = ptrf;
 			}
-			if(pkfmint < 0){
-				pkfmint = 0; 
-			}
-			while(s.pkf[ptrf].x < pkfmint && ptrf < s.ptrf){
-				ptrf++;
-			}
-			while(s.pkf[ptrf].x < pkfmaxt && ptrf < s.ptrf){
-				if(s.pkf[ptrf].y >= pkfmax){
-					pkfmax = s.pkf[ptrf].y;
-					pkfidx = ptrf;
-				}
-				ptrf++;
-			}
-			if(pkfidx == -1){
-				ptri++;
-				continue;
-			}
-			// this mwi peak has a corresponding peak in the filtered signal, so see if it's a maximum
-			if(y > pkimax){
-				pkimax = y;
-				pkiidx = ptri;
-				/*
-			}else if(y == pkimax &&
-				 s.pki[ptri].x - s.last_spki.x >= .92 * s.rravg2 &&
-				 s.pki[ptri].x - s.last_spki.x <= 1.16 * s.rravg2){
-				pkimax = y;
-				pkiidx = ptri;
-				*/
-			}
+			ptrf++;
+		}
+		if(pkfidx == -1){
+			ptri++;
+			continue;
+		}
+		// this mwi peak has a corresponding peak in the filtered signal, so see if it's a maximum
+		if(y > pkimax){
+			pkimax = y;
+			pkiidx = ptri;
+			/*
+			  }else if(y == pkimax &&
+			  s.pki[ptri].x - s.last_spki.x >= .92 * s.rravg2 &&
+			  s.pki[ptri].x - s.last_spki.x <= 1.16 * s.rravg2){
+			  pkimax = y;
+			  pkiidx = ptri;
+			*/
+		}
+		ptri++;
+	}
+	if(pkiidx > -1){
+		pd("\t\t-> %s\n", "we have an mwi peak with a corresponding peak in the filtered signal");
+		// we have an mwi peak with a corresponding peak in the filtered signal.
+		// check to see if they're both above their respective second thresholds
+		s.havepeak = 1;
+		ptri = 0;
+		while(ptri < pkiidx){
+			npki = 0.125 * s.pki[ptri].y + .875 * npki;
 			ptri++;
 		}
-		if(pkiidx > -1){
-			pd("\t\t-> %s\n", "we have an mwi peak with a corresponding peak in the filtered signal");
-			// we have an mwi peak with a corresponding peak in the filtered signal.
-			// check to see if they're both above their respective second thresholds
-			s.havepeak = 1;
-			ptri = 0;
-			while(ptri < pkiidx){
-				npki = 0.125 * s.pki[ptri].y + .875 * npki;
-				ptri++;
-			}
-			rtecg_int ptrf = 0;
-			while(ptrf < pkfidx){
-				npkf = 0.125 * s.pkf[ptrf].y + .875 * npkf;
-				ptrf++;
-			}
-			f1 = npkf + .25 * (spkf - npkf);
-			f2 = f1 * .5;
-			i1 = npki + .25 * (spki - npki);
-			i2 = i1 * .5;
-			rtecg_float c = 0.;
-			if(s.pkf[pkfidx].y > f2){
-				c += 1. / 3.;
-			}
-			if(s.pki[pkiidx].y > i2){
-				c += 1. / 3.;
-			}
-			pd("\t\t-> %d %d, confidence: %f\n", s.pki[pkiidx].x, s.pki[pkiidx].y, c);
-			s.last_last_spkf = s.last_spkf;
-			s.last_last_spki = s.last_spki;
-			s.last_spkf = (rtecg_spk){s.pkf[pkfidx].x, s.pkf[pkfidx].y, s.pkf[pkfidx].maxslope, c};
-			s.last_spki = (rtecg_spk){s.pki[pkiidx].x, s.pki[pkiidx].y, s.pki[pkiidx].maxslope, c};
-			// update signal estimates for filtered signal and mwi
-			// this was found using searchback, so use the other formula
-			spkf = .25 * s.pkf[pkfidx].y + .75 * spkf;
-			spki = .125 * s.pki[pkiidx].y + .75 * spki;
-			// transfer temp values to permanent ones
-			s.spkf = s.tspkf = spkf;
-			s.spki = s.tspki = spki;
-			s.npkf = s.tnpkf = npkf;
-			s.npki = s.tnpki = npki;
-			s.f1 = s.tf1 = s.tnpkf + .25 * (s.tspkf - s.tnpkf);
-			s.f2 = s.tf2 = s.f1 * .5;
-			s.i1 = s.ti1 = s.tnpki + .25 * (s.tspki - s.tnpki);
-			s.i2 = s.ti2 = s.i1 * .5;
-			// reset pointers and counter
-			s.ptrf = 0;
-			s.tptrf = 0;
-			s.ptri = 0;
-					
-			s.havefirstpeak = 1;
-		}else{
-			pd("\t\t-> %s\n", "we did not find a peak during searchback");
-			s.tspkf = s.spkf;
-			s.tspki = s.spki;
-			s.tnpkf = s.npkf;
-			s.tnpki = s.npki;
-			s.tf1 = s.f1;
-			s.ti2 = s.i2;
-			s.ti1 = s.i1;
-			s.ptrf = 0;
-			s.tptrf = 0;
-			s.ptri = 0;
-			s.havefirstpeak = 0;
+		rtecg_int ptrf = 0;
+		while(ptrf < pkfidx){
+			npkf = 0.125 * s.pkf[ptrf].y + .875 * npkf;
+			ptrf++;
 		}
+		f1 = npkf + .25 * (spkf - npkf);
+		f2 = f1 * .5;
+		i1 = npki + .25 * (spki - npki);
+		i2 = i1 * .5;
+		rtecg_float c = 0.;
+		if(s.pkf[pkfidx].y > f2){
+			c += 1. / 3.;
+		}
+		if(s.pki[pkiidx].y > i2){
+			c += 1. / 3.;
+		}
+		pd("\t\t-> %d %d, confidence: %f\n", s.pki[pkiidx].x, s.pki[pkiidx].y, c);
+		s.last_last_spkf = s.last_spkf;
+		s.last_last_spki = s.last_spki;
+		s.last_spkf = (rtecg_spk){s.pkf[pkfidx].x, s.pkf[pkfidx].y, s.pkf[pkfidx].maxslope, c};
+		s.last_spki = (rtecg_spk){s.pki[pkiidx].x, s.pki[pkiidx].y, s.pki[pkiidx].maxslope, c};
+		// update signal estimates for filtered signal and mwi
+		// this was found using searchback, so use the other formula
+		spkf = .25 * s.pkf[pkfidx].y + .75 * spkf;
+		spki = .125 * s.pki[pkiidx].y + .75 * spki;
+		// transfer temp values to permanent ones
+		s.spkf = s.tspkf = spkf;
+		s.spki = s.tspki = spki;
+		s.npkf = s.tnpkf = npkf;
+		s.npki = s.tnpki = npki;
+		s.f1 = s.tf1 = s.tnpkf + .25 * (s.tspkf - s.tnpkf);
+		s.f2 = s.tf2 = s.f1 * .5;
+		s.i1 = s.ti1 = s.tnpki + .25 * (s.tspki - s.tnpki);
+		s.i2 = s.ti2 = s.i1 * .5;
+		// reset pointers and counter
+		s.ptrf = 0;
+		s.tptrf = 0;
+		s.ptri = 0;
+					
+		s.havefirstpeak = 1;
+		s.searchback = 0;
+	}else{
+		pd("\t\t-> %s\n", "we did not find a peak during searchback");
+		s.tspkf = s.spkf;
+		s.tspki = s.spki;
+		s.tnpkf = s.npkf;
+		s.tnpki = s.npki;
+		s.tf1 = s.f1;
+		s.ti2 = s.i2;
+		s.ti1 = s.i1;
+		s.ptrf = 0;
+		s.tptrf = 0;
+		s.ptri = 0;
+		s.havefirstpeak = 0;
 	}
 	return s;
 }
