@@ -15,6 +15,12 @@
 #define ECG_WIFI
 #define ECG_SERIAL
 
+typedef struct _osctime
+{
+	uint32_t sec;
+	uint32_t frac_sec;
+} osctime;
+
 // prefix for all OSC addresses
 char *oscpfx = "/aa"; // must be 3 or fewer characters
 
@@ -64,32 +70,44 @@ int32_t oscbndl_size = oscbndl_i2 + 4;
 
 // bundle to send when we do a rest
 char resetbndl[] = {'#', 'b', 'u', 'n', 'd', 'l', 'e', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 12, oscpfx[0], oscpfx[1], oscpfx[2], '/', 'r', 'e', 's', 'e', 't', 0, 0, 0};
+
 // bundle with a single time tag that we send to the client so that they can do some statistics on the network traffic in response to pressing the flash button
-char timestampbndl[] = {'#', 'b', 'u', 'n', 'd', 'l', 'e', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 24, oscpfx[0], oscpfx[1], oscpfx[2], '/', 't', 0, 0, 0, ',', 'i', 't', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-char timestampbndl_alert[] = {'#', 'b', 'u', 'n', 'd', 'l', 'e', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 20, oscpfx[0], oscpfx[1], oscpfx[2], '/', 't', 0, 0, 0, ',', 's', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+void send_timestampbndl_start();
+void send_timestampbndl_stop();
+#define NTIMESTAMPBNDLS 8
+#define TIMESTAMPBNDL_IVAL_MICROS 2000000
+char timestampbndl[] = {'#', 'b', 'u', 'n', 'd', 'l', 'e', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 32, oscpfx[0], oscpfx[1], oscpfx[2], '/', 't', 'i', 'm', 'e', '/', 's', 'y', 'n', 'c', 0, 0, 0, ',', 'i', 't', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+char timestampbndl_start[] = {'#', 'b', 'u', 'n', 'd', 'l', 'e', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 16, oscpfx[0], oscpfx[1], oscpfx[2], '/', 't', 'i', 'm', 'e', '/', 's', 't', 'a', 'r', 't', 0, 0};
+char timestampbndl_stop[] = {'#', 'b', 'u', 'n', 'd', 'l', 'e', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 16, oscpfx[0], oscpfx[1], oscpfx[2], '/', 't', 'i', 'm', 'e', '/', 's', 't', 'o', 'p', 0, 0, 0};
+int sending_timestampbndls = 0;
+
+#define NSYNCNTP 8
+#define SYNCNTP_IVAL_MICROS 2000000
+int ntp_syncing = 0;
+
+const int NTP_PACKET_SIZE = 48; // NTP time is in the first 48 bytes of message
+byte packetBuffer[NTP_PACKET_SIZE]; //buffer to hold incoming & outgoing packets
+osctime theta_min = (osctime){0xFFFFFFFF, 0xFFFFFFFF};
+osctime delta_theta_min = (osctime){0, 0};
+int nsyncntp = 0;
+unsigned long lastntpsync_micros = 0;
 
 #ifdef ECG_WIFI
 // WIFI AP
-char ssid[] = "TP-LINK_40FE00";
-char pass[] = "78457393";
-//const char ssid[] = "Bbox-04B70355";  //  your network SSID (name)
-//const char pass[] = "AF6F326273676C1466C21AA45DEC43";       // your network password
+//char ssid[] = "TP-LINK_40FE00";
+//char pass[] = "78457393";
+const char ssid[] = "Bbox-04B70355";  //  your network SSID (name)
+const char pass[] = "AF6F326273676C1466C21AA45DEC43";       // your network password
 
 // WiFi remote host
 WiFiUDP udp;                                // A UDP instance to let us send and receive packets over UDP
-const IPAddress remote_ip(192,168,0,111);        // remote IP of your computer
-//const IPAddress remote_ip(192,168,1,6);        // remote IP of your computer
+//const IPAddress remote_ip(192,168,0,111);        // remote IP of your computer
+const IPAddress remote_ip(192,168,1,6);        // remote IP of your computer
 const unsigned int remote_port = 9999;          // remote port to receive OSC
 
 IPAddress ntp_time_server(209, 208, 79, 69); // pool.ntp.org
 const int timeZone = 0;
 #endif
-
-typedef struct _osctime
-{
-	uint32_t sec;
-	uint32_t frac_sec;
-} osctime;
 
 // state of classifier etc
 unsigned long tmicros;
@@ -663,13 +681,6 @@ struct DS3234_date  osctime_to_date(osctime timetag)
 	return make_DS3234_date(secs, minute, hour, 0, mday, month, year);
 }
 
-const int NTP_PACKET_SIZE = 48; // NTP time is in the first 48 bytes of message
-byte packetBuffer[NTP_PACKET_SIZE]; //buffer to hold incoming & outgoing packets
-osctime theta_min = (osctime){0xFFFFFFFF, 0xFFFFFFFF};
-osctime delta_theta_min = (osctime){0, 0};
-int nsyncntp = 0;
-unsigned long lastntpsync_micros = 0;
-
 void getNtpTime()
 {
 #ifdef ECG_WIFI
@@ -764,9 +775,6 @@ void sendNTPpacket(IPAddress &address)
 
 void ntp_sync(void)
 {
-	Serial.print("NTP sync (");
-	Serial.print(nsyncntp);
-	Serial.println(")");
 	if(nsyncntp){
 		getNtpTime();
 		lastntpsync_micros = micros();
@@ -774,10 +782,17 @@ void ntp_sync(void)
 		if(nsyncntp == 0){
 			theta_min = (osctime){0xFFFFFFFF, 0xFFFFFFFF};
 			delta_theta_min = (osctime){0, 0};
-			ntimestampbndls = 8;
-			send_timestampbndls();
+			ntp_syncing = 0;
+			send_timestampbndl_start();
 		}
 	}
+}
+
+void ntp_sync_start(void)
+{
+	nsyncntp = NSYNCNTP;
+	ntp_syncing = 1;
+	ntp_sync();
 }
 
 void send_resetbndl()
@@ -792,36 +807,34 @@ void send_resetbndl()
 
 void send_timestampbndl_start()
 {
-	memcpy(timestampbndl_alert + (sizeof(timestampbndl_alert) - 8), "start\0\0\0", 8);
+	ntimestampbndls = NTIMESTAMPBNDLS;
+	sending_timestampbndls = 1;
 #ifdef ECG_WIFI
 	udp.beginPacket(remote_ip, remote_port);
-	udp.write(timestampbndl_alert, sizeof(timestampbndl_alert));
+	udp.write(timestampbndl_start, sizeof(timestampbndl_start));
 	udp.endPacket();
 #endif // ECG_WIFI
 }
 
 void send_timestampbndl_stop()
 {
-	memcpy(timestampbndl_alert + (sizeof(timestampbndl_alert) - 8), "stop\0\0\0\0", 8);
+	sending_timestampbndls = 0;
 #ifdef ECG_WIFI
 	udp.beginPacket(remote_ip, remote_port);
-	udp.write(timestampbndl_alert, sizeof(timestampbndl_alert));
+	udp.write(timestampbndl_stop, sizeof(timestampbndl_stop));
 	udp.endPacket();
 #endif // ECG_WIFI
 }
 
-void send_timestampbndls(void)
+void send_timestampbndl(void)
 {
-	Serial.print("sending timestamp bndl (");
-	Serial.print(ntimestampbndls);
-	Serial.println(")");
 	if(ntimestampbndls){
-		if(ntimestampbndls == 8){
+		if(ntimestampbndls == NTIMESTAMPBNDLS){
 			send_timestampbndl_start();
 		}
 		osctime t = timenow();
 		osc_timetag_encodeForHeader(t, timestampbndl + (sizeof(timestampbndl) - 8));
-		*((int32_t *)(timestampbndl + (sizeof(timestampbndl) - 12))) = hton32(ntimestampbndls);
+		*((int32_t *)(timestampbndl + (sizeof(timestampbndl) - 12))) = hton32((NTIMESTAMPBNDLS + 1) - ntimestampbndls);
 		lasttimestampbndl_micros = micros();
 #ifdef ECG_WIFI
 		udp.beginPacket(remote_ip, remote_port);
@@ -926,8 +939,7 @@ void setup()
 	DS3234_set_reg(DS3234_CREG_WRITE, DS3234_get_reg(DS3234_CREG_READ) | DS3234_A1IE);
 
 	// send 8 bundles with time stamps to the client so that they can do statistics on the network jitter / latency
-	ntimestampbndls = 8;
-	send_timestampbndls();
+	send_timestampbndl_start();
 
 	tmicros_ival = 1000000. / RTECG_FS;
 	tmicros_prev = micros();
@@ -972,21 +984,19 @@ void loop()
 				delay(100);
 				digitalWrite(pin_led, HIGH);
 				// NTP sync
-				nsyncntp = 8;
-				ntp_sync();
+				ntp_sync_start();
 				int_flash = 0;
 			}
 		}else{
 			// flash button has been released
 			digitalWrite(pin_flash, HIGH);
-			ntimestampbndls = 8;
-			send_timestampbndls();
+			send_timestampbndl_start();
 			int_flash = 0;
 		}
 	}
 	// send a timestamp bundle if we're in the middle of that
-	if(ntimestampbndls && micros() - lasttimestampbndl_micros >= 2000000){
-		send_timestampbndls();
+	if(sending_timestampbndls && micros() - lasttimestampbndl_micros >= TIMESTAMPBNDL_IVAL_MICROS){
+		send_timestampbndl();
 	}
 
 	// do an NTP sync if we're in the middle of that
