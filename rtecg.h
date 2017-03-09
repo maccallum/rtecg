@@ -24,6 +24,8 @@ typedef float rtecg_float;
 //#define RTECG_PKWINLEN ((RTECG_MTOS(165)) | 1) // length of window to search for peaks in
 #define RTECG_PKWINLEN ((RTECG_MTOS(100)) | 1) // length of window to search for peaks in
 #define RTECG_PKKNEIGH (((RTECG_PKWINLEN) - 1) / 2) // number of samples to the left and right of candidate peak
+#define RTECG_PTBUFLEN (RTECG_MTOS(2000) / 10) // number of candidate peaks to keep
+
 // delays incurred at each stage of processing
 #define RTECG_LPDEL (((RTECG_LPBUFLEN) / 2) - 1) // number of samples delay for lp filter
 #define RTECG_HPDEL (((RTECG_HPBUFLEN) - 1) / 2) // number of samples delay for hp filter

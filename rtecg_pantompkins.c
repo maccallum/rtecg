@@ -2,6 +2,7 @@
 #include "rtecg_pantompkins.h"
 #include <string.h>
 #include <stdio.h>
+#include <stdlib.h>
 
 //#define RTECG_PT_PRINTSTATE
 #ifdef RTECG_PT_PRINTSTATE
@@ -18,6 +19,8 @@ rtecg_pt rtecg_pt_init(void)
 {
 	rtecg_pt s;
 	memset(&s, 0, sizeof(rtecg_pt));
+	s.pkf = (rtecg_spk *)calloc(RTECG_PTBUFLEN, sizeof(rtecg_spk));
+	s.pki = (rtecg_spk *)calloc(RTECG_PTBUFLEN, sizeof(rtecg_spk));
 	s.burn_avg1 = s.burn_avg2 = 1;
 	return s;
 }
@@ -209,8 +212,8 @@ rtecg_pt rtecg_pt_process(rtecg_pt s, rtecg_int pkf, rtecg_int maxslopef, rtecg_
 						// record peaks
 						s.last_last_spkf = s.last_spkf;
 						s.last_last_spki = s.last_spki;
-						s.last_spkf = (rtecg_spk){s.pkf[pkidx].x, s.pkf[pkidx].y, maxslopef, 1.};
-						s.last_spki = (rtecg_spk){s.pki[s.ptri].x, s.pki[s.ptri].y, maxslopei, 1.};
+						s.last_spkf = (rtecg_spk){s.pkf[pkidx].x, s.pkf[pkidx].y, s.pkf[pkidx].maxslope, 1.};
+						s.last_spki = (rtecg_spk){s.pki[s.ptri].x, s.pki[s.ptri].y, s.pki[s.ptri].maxslope, 1.};
 						// update noise estimates for filtered signal
 						while(s.tptrf < pkidx){
 							s.tnpkf = 0.125 * s.pkf[s.tptrf].y + .875 * s.tnpkf;
@@ -254,6 +257,28 @@ rtecg_pt rtecg_pt_process(rtecg_pt s, rtecg_int pkf, rtecg_int maxslopef, rtecg_
 	}
 	if(s.havefirstpeak && s.havepeak == 0 && !s.burn_avg2 && rtecg_pt_last_spki(s).x > (s.rravg2 * 1.66)){
 		s.searchback = 1;
+	}
+	
+	// this seems extreme, but it will happen almost never, only when there's a signal
+	// that's noisy to the point of being unusable
+	if(s.ptrf == RTECG_PTBUFLEN){
+		pd("%s\n", "s.ptrf == RTECG_PTBUFLEN\n");
+		rtecg_int i = 1;
+		while(i < s.tptrf && (s.pkf[i].x - s.last_spkf.x) > RTECG_FS * 2){
+			i++;
+		}
+		memmove(s.pkf, s.pkf + i, RTECG_PTBUFLEN - i);
+		s.ptrf--;
+		s.tptrf--;
+	}
+	if(s.ptri == RTECG_PTBUFLEN){
+		pd("%s\n", "s.ptri == RTECG_PTBUFLEN\n");
+		rtecg_int i = 1;
+		while((s.pki[i].x - s.last_spki.x) > RTECG_FS * 2){
+			i++;
+		}
+		memmove(s.pki, s.pki + i, RTECG_PTBUFLEN - i);
+		s.ptri--;
 	}
 	return s;
 }
@@ -358,10 +383,10 @@ rtecg_pt rtecg_pt_searchback(rtecg_pt s)
 		s.f2 = s.tf2 = s.f1 * .5;
 		s.i1 = s.ti1 = s.tnpki + .25 * (s.tspki - s.tnpki);
 		s.i2 = s.ti2 = s.i1 * .5;
-		// reset pointers and counter
-		s.ptrf = 0;
-		s.tptrf = 0;
-		s.ptri = 0;
+		// reset pointers and counter to the found peak
+		s.ptrf = pkfidx;
+		s.tptrf = pkfidx;
+		s.ptri = pkiidx;
 					
 		s.havefirstpeak = 1;
 		s.searchback = 0;

@@ -7,8 +7,6 @@ extern "C" {
 
 #include "rtecg.h"
 
-#define RTECG_PT_HISTLEN 24 // number of candidate peaks to keep around
-
 // the confidence value is crude at this point:
 // 1:		peakf >= f1 && peaki >= i1
 // .666:	peakf >= f2 && peaki >= i2 (searchback)
@@ -26,7 +24,7 @@ typedef struct _rtecg_pt
 {
 	rtecg_float spkf, spki, npkf, npki, f1, f2, i1, i2;
 	rtecg_float tspkf, tspki, tnpkf, tnpki, tf1, tf2, ti1, ti2;
-	rtecg_spk pkf[RTECG_PT_HISTLEN], pki[RTECG_PT_HISTLEN];
+	rtecg_spk *pkf, *pki;//pkf[RTECG_PT_HISTLEN], pki[RTECG_PT_HISTLEN];
 	rtecg_int ptrf, tptrf, ptri;
 	rtecg_ctr ctr;
 	rtecg_spk last_spkf, last_spki, last_last_spkf, last_last_spki;

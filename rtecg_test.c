@@ -23,7 +23,8 @@ int main(int ac, char **av)
 	rtecg_float out[sizeof(keys) / sizeof(char*)][n];
 	memset(out, 0, (sizeof(keys) / sizeof(char*)) * n * sizeof(rtecg_float));
 	for(int i = 0; i < n; i++){
-		out[0][i] = testdat[i];
+		//out[0][i] = testdat[i];
+		out[0][i] = rand();
 	}
 
 	enum{

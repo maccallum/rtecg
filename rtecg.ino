@@ -95,7 +95,8 @@ rtecg_pt pts;
 osctime tlst[RTECG_FS * 2];
 int tptr = 0;
 int ntimestampbndls = 0;
-unsigned long lasttimestampbndl_micros = 0; 
+unsigned long lasttimestampbndl_micros = 0;
+unsigned long tmicros_prev, tmicros_ival;
 
 /* #ifdef ECG_SERIAL */
 /* #include <SLIPEncodedSerial.h> */
@@ -700,15 +701,19 @@ void getNtpTime()
 				printf("%llu %llu\n", delta, theta);
 				//ttt.sec = ntoh32(ttt.sec);
 				//ttt.frac_sec = ntoh32(ttt.frac_sec);
-				unsigned long tmicros = micros() + (1000000 - (((double)t4.frac_sec / 0xFFFFFFFF) * 1000000));
+				//unsigned long tmicros = micros() + (1000000 - (((double)t4.frac_sec / 0xFFFFFFFF) * 1000000));
+				unsigned long ival_micros = (1000000 - (((double)t4.frac_sec / 0xFFFFFFFF) * 1000000));
 				Serial.print("waiting for ");
 				Serial.print((1000000 - (((double)t4.frac_sec / 0xFFFFFFFF) * 1000000)));
 				Serial.print("us, ");
 				Serial.print((1000000 - (((double)t4.frac_sec / 0xFFFFFFFF) * 1000000)) / (float)1000);
 				Serial.println("ms");
 				t4.sec++;
-				while(micros() < tmicros){
-					//yield();
+				unsigned long cur_micros = micros();
+				unsigned long prev_micros = cur_micros;
+				//while(micros() < tmicros){
+				while(cur_micros - prev_micros < ival_micros){
+				      cur_micros = micros();
 				}
 				DS3234_set_date(osctime_to_date(t4));
 				yield();
@@ -916,21 +921,20 @@ void setup()
 	ntimestampbndls = 8;
 	send_timestampbndls();
 
-	//tmicros = micros_ref + 4500;
+	tmicros_ival = 1000000. / RTECG_FS;
+	tmicros_prev = micros();
 }
 
 void loop()
 {
 	// spinlock to get as close to 5ms as we can before yielding
-	while((micros()) < tmicros){
-		;
+	unsigned long tmicros_cur = micros();
+	while(tmicros_cur - tmicros_prev < tmicros_ival){
+		tmicros_cur = micros();
 	}
+	tmicros_prev = tmicros_cur;
 	// get time and read pin
 	osctime now = timenow();
-	/* noInterrupts(); */
-	/* osctime now = DS3234_date_to_osctime(DS3234_get_date()); */
-	/* now.frac_sec = (uint32_t)(0xFFFFFFFFUL * ((micros() - micros_ref) / 1000000.)); */
-	/* interrupts(); */
 	tlst[tptr] = now;
 	rtecg_int a0 = analogRead(A0);
 	// now yield
@@ -993,6 +997,7 @@ void loop()
 	// classify
 	pts = rtecg_pt_process(pts, rtecg_pk_y0(pkf) * rtecg_pk_xm82(pkf), rtecg_pk_maxslope(pkf), rtecg_pk_y0(pki) * rtecg_pk_xm82(pki), rtecg_pk_maxslope(pki));
 	if(pts.searchback){
+		yield();
 		pts = rtecg_pt_searchback(pts);
 	}
 	if(pts.havepeak){
@@ -1009,17 +1014,17 @@ void loop()
 	*((int32_t *)(oscbndl + oscbndl_raw)) = hton32(a0);
 	*((int32_t *)(oscbndl + oscbndl_filt)) = hton32(rtecg_pthp_y0(hp));
 	*((int32_t *)(oscbndl + oscbndl_mwi)) = hton32(rtecg_pti_y0(mwi));
-	int idx = tptr - (rtecg_pt_last_spkf(pts).x + RTECG_PKDEL);
+	int idx = tptr - (rtecg_pt_last_spkf(pts).x + RTECG_PKDEL) + 1;
 	if(idx < 0){
-		idx += RTECG_FS * 2;
+		idx += (RTECG_FS * 2);
 	}
 	osc_timetag_encodeForHeader(tlst[idx], oscbndl + oscbndl_spkft);
 	*((int32_t *)(oscbndl + oscbndl_spkfv)) = hton32(rtecg_pt_last_spkf(pts).y);
 	tmpf = rtecg_pt_last_spkf(pts).confidence;
 	*((int32_t *)(oscbndl + oscbndl_spkfc)) = hton32(*((int32_t *)&(tmpf)));
-	idx = tptr - (rtecg_pt_last_spki(pts).x + RTECG_PKDEL);
+	idx = tptr - (rtecg_pt_last_spki(pts).x + RTECG_PKDEL) + 1;
 	if(idx < 0){
-		idx += RTECG_FS * 2;
+		idx += (RTECG_FS * 2);
 	}
 	osc_timetag_encodeForHeader(tlst[idx], oscbndl + oscbndl_spkit);
 	*((int32_t *)(oscbndl + oscbndl_spkiv)) = hton32(rtecg_pt_last_spki(pts).y);
@@ -1056,8 +1061,6 @@ void loop()
 	if(++tptr == (RTECG_FS * 2)){
 		tptr = 0;
 	}
-	tmicros += 5000;
-
 	// don't delay or yield here---we want to get close to 5ms, and we don't know how long
 	// a we'll lose control for if we yield or delay
 }
