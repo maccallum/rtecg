@@ -20,10 +20,10 @@ char *oscpfx = "/aa"; // must be 3 or fewer characters
 
 // main OSC bundle
 char *oscbndl_address = "/ecg";
-char *oscbndl_typetags = ",Itiiitiftiffff\0";
+char *oscbndl_typetags = ",Itiiitiftiffffffff\0";
 char oscbndl[20 	// header and message size
 	     + 8	// address
-	     + 16	// typetags
+	     + 20	// typetags
 	     + 4	// packet number
 	     + 8	// time
 	     + 4	// raw
@@ -37,8 +37,12 @@ char oscbndl[20 	// header and message size
 	     + 4	// spki confidence
 	     + 4	// rr
 	     + 4	// avg1
-	     + 4];	// avg2
-int oscbndl_pnum = 44;
+	     + 4	// avg2
+	     + 4	// f1
+	     + 4	// f2
+	     + 4	// i1
+	     + 4];	// i2
+int oscbndl_pnum = 48;
 int oscbndl_time = oscbndl_pnum + 4;
 int oscbndl_raw = oscbndl_time + 8;
 int oscbndl_filt = oscbndl_raw + 4;
@@ -52,7 +56,11 @@ int oscbndl_spkic = oscbndl_spkiv + 4;
 int oscbndl_rr = oscbndl_spkic + 4;
 int oscbndl_avg1 = oscbndl_rr + 4;
 int oscbndl_avg2 = oscbndl_avg1 + 4;
-int32_t oscbndl_size = oscbndl_avg2 + 4;
+int oscbndl_f1 = oscbndl_avg2 + 4;
+int oscbndl_f2 = oscbndl_f1 + 4;
+int oscbndl_i1 = oscbndl_f2 + 4;
+int oscbndl_i2 = oscbndl_i1 + 4;
+int32_t oscbndl_size = oscbndl_i2 + 4;
 
 // bundle to send when we do a rest
 char resetbndl[] = {'#', 'b', 'u', 'n', 'd', 'l', 'e', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 12, oscpfx[0], oscpfx[1], oscpfx[2], '/', 'r', 'e', 's', 'e', 't', 0, 0, 0};
@@ -62,15 +70,15 @@ char timestampbndl_alert[] = {'#', 'b', 'u', 'n', 'd', 'l', 'e', 0, 0, 0, 0, 0, 
 
 #ifdef ECG_WIFI
 // WIFI AP
-//char ssid[] = "TP-LINK_40FE00";
-//char pass[] = "78457393";
-const char ssid[] = "Bbox-04B70355";  //  your network SSID (name)
-const char pass[] = "AF6F326273676C1466C21AA45DEC43";       // your network password
+char ssid[] = "TP-LINK_40FE00";
+char pass[] = "78457393";
+//const char ssid[] = "Bbox-04B70355";  //  your network SSID (name)
+//const char pass[] = "AF6F326273676C1466C21AA45DEC43";       // your network password
 
 // WiFi remote host
 WiFiUDP udp;                                // A UDP instance to let us send and receive packets over UDP
-//const IPAddress remote_ip(192,168,0,100);        // remote IP of your computer
-const IPAddress remote_ip(192,168,1,6);        // remote IP of your computer
+const IPAddress remote_ip(192,168,0,111);        // remote IP of your computer
+//const IPAddress remote_ip(192,168,1,6);        // remote IP of your computer
 const unsigned int remote_port = 9999;          // remote port to receive OSC
 
 IPAddress ntp_time_server(209, 208, 79, 69); // pool.ntp.org
@@ -896,7 +904,7 @@ void setup()
 	*((int32_t *)(oscbndl + 16)) = hton32(oscbndl_size - 20); // message size
 	memcpy(oscbndl + 20, oscpfx, 3); // /aa
 	memcpy(oscbndl + 23, oscbndl_address, 4); // /ecg
-	memcpy(oscbndl + 28, oscbndl_typetags, 16); // typetags
+	memcpy(oscbndl + 28, oscbndl_typetags, 20); // typetags
 
 	// notify the world that we did a reset
 	send_resetbndl();
@@ -1045,6 +1053,10 @@ void loop()
 		r = 60. / r;
 	}
 	*((int32_t *)(oscbndl + oscbndl_avg2)) = hton32(*((int32_t *)&r));
+	*((int32_t *)(oscbndl + oscbndl_f1)) = hton32(*((int32_t *)&(pts.f1)));
+	*((int32_t *)(oscbndl + oscbndl_f2)) = hton32(*((int32_t *)&(pts.f2)));
+	*((int32_t *)(oscbndl + oscbndl_i1)) = hton32(*((int32_t *)&(pts.i1)));
+	*((int32_t *)(oscbndl + oscbndl_i2)) = hton32(*((int32_t *)&(pts.i2)));
 	
 	// ship it
 #ifdef ECG_WIFI
