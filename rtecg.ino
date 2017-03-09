@@ -12,7 +12,7 @@
 #include "rtecg_pantompkins.h"
 
 //#define ECG_DEBUG
-//#define ECG_WIFI
+#define ECG_WIFI
 #define ECG_SERIAL
 
 // prefix for all OSC addresses
@@ -57,18 +57,20 @@ int32_t oscbndl_size = oscbndl_avg2 + 4;
 // bundle to send when we do a rest
 char resetbndl[] = {'#', 'b', 'u', 'n', 'd', 'l', 'e', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 12, oscpfx[0], oscpfx[1], oscpfx[2], '/', 'r', 'e', 's', 'e', 't', 0, 0, 0};
 // bundle with a single time tag that we send to the client so that they can do some statistics on the network traffic in response to pressing the flash button
-char timestampbndl[] = {'#', 'b', 'u', 'n', 'd', 'l', 'e', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 20, oscpfx[0], oscpfx[1], oscpfx[2], '/', 't', 0, 0, 0, ',', 't', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+char timestampbndl[] = {'#', 'b', 'u', 'n', 'd', 'l', 'e', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 24, oscpfx[0], oscpfx[1], oscpfx[2], '/', 't', 0, 0, 0, ',', 'i', 't', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+char timestampbndl_alert[] = {'#', 'b', 'u', 'n', 'd', 'l', 'e', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 20, oscpfx[0], oscpfx[1], oscpfx[2], '/', 't', 0, 0, 0, ',', 's', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
 #ifdef ECG_WIFI
 // WIFI AP
-char ssid[] = "TP-LINK_40FE00";
-char pass[] = "78457393";
-//const char ssid[] = "Bbox-04B70355";  //  your network SSID (name)
-//const char pass[] = "AF6F326273676C1466C21AA45DEC43";       // your network password
+//char ssid[] = "TP-LINK_40FE00";
+//char pass[] = "78457393";
+const char ssid[] = "Bbox-04B70355";  //  your network SSID (name)
+const char pass[] = "AF6F326273676C1466C21AA45DEC43";       // your network password
 
 // WiFi remote host
 WiFiUDP udp;                                // A UDP instance to let us send and receive packets over UDP
-const IPAddress remote_ip(192,168,0,100);        // remote IP of your computer
+//const IPAddress remote_ip(192,168,0,100);        // remote IP of your computer
+const IPAddress remote_ip(192,168,1,6);        // remote IP of your computer
 const unsigned int remote_port = 9999;          // remote port to receive OSC
 
 IPAddress ntp_time_server(209, 208, 79, 69); // pool.ntp.org
@@ -77,8 +79,8 @@ const int timeZone = 0;
 
 typedef struct _osctime
 {
-	uint32_t seconds;
-	uint32_t fractionofseconds;
+	uint32_t sec;
+	uint32_t frac_sec;
 } osctime;
 
 // state of classifier etc
@@ -318,7 +320,7 @@ osctime DS3234_date_to_osctime(struct DS3234_date d)
 	// count leap days
 	day += (365 * year + (year + 3) / 4);
 
-	time.seconds = ((day * 24UL + bcdtodec(d.hour)) * 60 + bcdtodec(d.min)) * 60 + bcdtodec(d.sec);// + 946684800;
+	time.sec = ((day * 24UL + bcdtodec(d.hour)) * 60 + bcdtodec(d.min)) * 60 + bcdtodec(d.sec);// + 946684800;
 	return time;
 }
 
@@ -326,7 +328,7 @@ osctime timenow()
 {
 	noInterrupts();
 	osctime now = DS3234_date_to_osctime(DS3234_get_date());
-	now.fractionofseconds = (uint32_t)(0xFFFFFFFFUL * ((micros() - micros_ref) / 1000000.));
+	now.frac_sec = (uint32_t)(0xFFFFFFFFUL * ((micros() - micros_ref) / 1000000.));
 	interrupts();
 	return now;
 }
@@ -358,6 +360,85 @@ void osc_timetag_encodeForHeader(osctime t, char *buf)
 
 	*((uint32_t *)p1) = hton32(*((uint32_t *)ttp1));
 	*((uint32_t *)p2) = hton32(*((uint32_t *)ttp2));
+}
+
+osctime osc_timetag_add(osctime t1, osctime t2)
+{
+	osctime t1_ntp = *((osctime *)(&t1));
+	osctime t2_ntp = *((osctime *)(&t2));
+	osctime r;
+	r.sec = t1_ntp.sec + t2_ntp.sec;
+	r.frac_sec = t1_ntp.frac_sec + t2_ntp.frac_sec;
+
+	if(r.frac_sec < t1_ntp.frac_sec) { // rollover occurred
+		r.sec += 1;
+	}
+	return *((osctime *)(&r));
+}
+
+osctime osc_timetag_subtract(osctime t1, osctime t2)
+{
+	osctime t1_ntp = *((osctime *)(&t1));
+	osctime t2_ntp = *((osctime *)(&t2));
+	osctime r;
+
+	if(t1_ntp.sec > t2_ntp.sec || (t1_ntp.sec == t2_ntp.sec && t1_ntp.frac_sec >= t2_ntp.frac_sec)){
+		r.sec = t1_ntp.sec - t2_ntp.sec;
+		if(t1_ntp.frac_sec >= t2_ntp.frac_sec){
+			r.frac_sec = t1_ntp.frac_sec - t2_ntp.frac_sec;
+		}else{
+			if(r.sec == 0){
+				r.frac_sec = t2_ntp.frac_sec - t1_ntp.frac_sec;
+			}else{
+				r.sec--;
+				r.frac_sec = t1_ntp.frac_sec - t2_ntp.frac_sec;
+			}
+		}
+	}else{
+		r.sec = t2_ntp.sec - t1_ntp.sec;
+		if(t1_ntp.frac_sec >= t2_ntp.frac_sec){
+			r.frac_sec = t1_ntp.frac_sec - t2_ntp.frac_sec;
+		}else{
+			r.frac_sec = t2_ntp.frac_sec - t1_ntp.frac_sec;
+		}
+	}
+
+	return *((osctime *)(&r));
+}
+
+int osc_timetag_compare(osctime t1, osctime t2)
+{
+	osctime t1_ntp = *((osctime *)(&t1));
+	osctime t2_ntp = *((osctime *)(&t2));
+	if(t1_ntp.sec < t2_ntp.sec || (t1_ntp.sec == t2_ntp.sec && t1_ntp.frac_sec < t2_ntp.frac_sec)) {
+		return -1;
+	}
+
+	if(t1_ntp.sec > t2_ntp.sec || (t1_ntp.sec == t2_ntp.sec && t1_ntp.frac_sec > t2_ntp.frac_sec)) {
+		return 1;
+	}
+
+	return 0;
+}
+
+osctime float_to_osctime(double d)
+{
+	double sec;
+	double frac_sec;
+
+	//frac_sec = fmod(d, 1.0);
+	frac_sec = d - (uint64_t)d;
+	sec = d - frac_sec;
+
+	osctime n;
+	n.sec = (uint32_t)(sec);
+	n.frac_sec= (uint32_t)(frac_sec * 4294967295.0);
+	return n;
+}
+
+double osctime_to_float(osctime n)
+{
+	return ((double)(n.sec)) + ((double)((uint64_t)(n.frac_sec))) / 4294967295.0;
 }
 
 //Function isleap:  Determines if year is a leap year or not, without using modulo.
@@ -491,7 +572,7 @@ unsigned short int osc_timetag_getmonth(unsigned short int *day, unsigned short 
 struct DS3234_date  osctime_to_date(osctime timetag)
 {
 	char s1[20];
-	uint32_t secs = timetag.seconds;//osc_timetag_ntp_getSeconds(timetag);
+	uint32_t secs = timetag.sec;//osc_timetag_ntp_getSeconds(timetag);
 	unsigned short int year, month, day, hour, minute, yrcount, leap = 0;
 
 	const DWORD SEC_PER_YEAR = 31536000;
@@ -575,8 +656,8 @@ struct DS3234_date  osctime_to_date(osctime timetag)
 
 const int NTP_PACKET_SIZE = 48; // NTP time is in the first 48 bytes of message
 byte packetBuffer[NTP_PACKET_SIZE]; //buffer to hold incoming & outgoing packets
-uint64_t theta_min = 0xFFFFFFFFFFFFFFFF;
-uint64_t delta_theta_min = 0;
+osctime theta_min = (osctime){0xFFFFFFFF, 0xFFFFFFFF};
+osctime delta_theta_min = (osctime){0, 0};
 int nsyncntp = 0;
 unsigned long lastntpsync_micros = 0;
 
@@ -592,28 +673,52 @@ void getNtpTime()
 		if (size >= NTP_PACKET_SIZE) {
 			Serial.println("Receive NTP Response");
 			udp.read(packetBuffer, NTP_PACKET_SIZE);  // read packet into the buffer
-
-			uint64_t t1 = ntoh64(*((uint64_t *)(packetBuffer + 16)));
-			uint64_t t2 = ntoh64(*((uint64_t *)(packetBuffer + 24)));
-			uint64_t t3 = ntoh64(*((uint64_t *)(packetBuffer + 32)));
-			uint64_t t4 = ntoh64(*((uint64_t *)(packetBuffer + 40)));
-			uint64_t delta = (t4 - t1) - (t3 - t2);
-			uint64_t theta = 0.5 * ((t2 - t1) - (t3 - t4));
-			if(theta < theta_min){
+			//yield();
+			/* uint64_t t1 = ntoh64(*((uint64_t *)(packetBuffer + 16))); */
+			/* uint64_t t2 = ntoh64(*((uint64_t *)(packetBuffer + 24))); */
+			/* uint64_t t3 = ntoh64(*((uint64_t *)(packetBuffer + 32))); */
+			/* uint64_t t4 = ntoh64(*((uint64_t *)(packetBuffer + 40))); */
+			/* uint64_t t1 = ntoh32(*((uint32_t *)(packetBuffer + 16))) << 32 | ntoh32(*((uint32_t *)(packetBuffer + 20))); */
+			/* uint64_t t2 = ntoh32(*((uint32_t *)(packetBuffer + 24))) << 32 | ntoh32(*((uint32_t *)(packetBuffer + 28))); */
+			/* uint64_t t3 = ntoh32(*((uint32_t *)(packetBuffer + 32))) << 32 | ntoh32(*((uint32_t *)(packetBuffer + 36))); */
+			/* uint64_t t4 = ntoh32(*((uint32_t *)(packetBuffer + 40))) << 32 | ntoh32(*((uint32_t *)(packetBuffer + 44))); */
+			osctime t1 = (osctime){ntoh32(*((uint32_t *)(packetBuffer + 16))), ntoh32(*((uint32_t *)(packetBuffer + 20)))};
+			osctime t2 = (osctime){ntoh32(*((uint32_t *)(packetBuffer + 24))), ntoh32(*((uint32_t *)(packetBuffer + 28)))};
+			osctime t3 = (osctime){ntoh32(*((uint32_t *)(packetBuffer + 32))), ntoh32(*((uint32_t *)(packetBuffer + 36)))};
+			osctime t4 = (osctime){ntoh32(*((uint32_t *)(packetBuffer + 40))), ntoh32(*((uint32_t *)(packetBuffer + 44)))};
+			
+			osctime delta = osc_timetag_subtract(osc_timetag_subtract(t4, t1), osc_timetag_subtract(t3, t2));
+			osctime theta = float_to_osctime(0.5 * osctime_to_float(osc_timetag_add(osc_timetag_subtract(t2, t1), osc_timetag_subtract(t3, t4))));
+			if(osc_timetag_compare(theta,  theta_min) < 0){
+				Serial.println("better theta");
 				theta_min = theta;
 				delta_theta_min = delta;
+				printf("0x%llx\n", t4);
 				// set time
-				osctime ttt = *((osctime *)&t4);
-				//ttt.seconds = ntoh32(ttt.seconds);
-				//ttt.fractionofseconds = ntoh32(ttt.fractionofseconds);
-				unsigned long tmillis = millis() + (1000000 - (((double)ttt.fractionofseconds / 0xFFFFFFFF) * 1000000));
-				ttt.seconds++;
-				while(millis() < tmillis) ;
-				DS3234_set_date(osctime_to_date(ttt));
+				Serial.println(t4.frac_sec);
+				Serial.println((double)t4.frac_sec / 0xFFFFFFFF);
+				printf("%llu %llu\n", delta, theta);
+				//ttt.sec = ntoh32(ttt.sec);
+				//ttt.frac_sec = ntoh32(ttt.frac_sec);
+				unsigned long tmicros = micros() + (1000000 - (((double)t4.frac_sec / 0xFFFFFFFF) * 1000000));
+				Serial.print("waiting for ");
+				Serial.print((1000000 - (((double)t4.frac_sec / 0xFFFFFFFF) * 1000000)));
+				Serial.print("us, ");
+				Serial.print((1000000 - (((double)t4.frac_sec / 0xFFFFFFFF) * 1000000)) / (float)1000);
+				Serial.println("ms");
+				t4.sec++;
+				while(micros() < tmicros){
+					//yield();
+				}
+				DS3234_set_date(osctime_to_date(t4));
+				yield();
+				return;
+			}else{
+				yield();
+				return;
 			}
-
-			
 		}
+		yield();
 	}
 	Serial.println("No NTP Response :-(");
 #endif
@@ -653,6 +758,12 @@ void ntp_sync(void)
 		getNtpTime();
 		lastntpsync_micros = micros();
 		nsyncntp--;
+		if(nsyncntp == 0){
+			theta_min = (osctime){0xFFFFFFFF, 0xFFFFFFFF};
+			delta_theta_min = (osctime){0, 0};
+			ntimestampbndls = 8;
+			send_timestampbndls();
+		}
 	}
 }
 
@@ -666,21 +777,48 @@ void send_resetbndl()
 #endif // ECG_WIFI
 }
 
+void send_timestampbndl_start()
+{
+	memcpy(timestampbndl_alert + (sizeof(timestampbndl_alert) - 8), "start\0\0\0", 8);
+#ifdef ECG_WIFI
+	udp.beginPacket(remote_ip, remote_port);
+	udp.write(timestampbndl_alert, sizeof(timestampbndl_alert));
+	udp.endPacket();
+#endif // ECG_WIFI
+}
+
+void send_timestampbndl_stop()
+{
+	memcpy(timestampbndl_alert + (sizeof(timestampbndl_alert) - 8), "stop\0\0\0\0", 8);
+#ifdef ECG_WIFI
+	udp.beginPacket(remote_ip, remote_port);
+	udp.write(timestampbndl_alert, sizeof(timestampbndl_alert));
+	udp.endPacket();
+#endif // ECG_WIFI
+}
+
 void send_timestampbndls(void)
 {
 	Serial.print("sending timestamp bndl (");
 	Serial.print(ntimestampbndls);
 	Serial.println(")");
 	if(ntimestampbndls){
+		if(ntimestampbndls == 8){
+			send_timestampbndl_start();
+		}
 		osctime t = timenow();
 		osc_timetag_encodeForHeader(t, timestampbndl + (sizeof(timestampbndl) - 8));
+		*((int32_t *)(timestampbndl + (sizeof(timestampbndl) - 12))) = hton32(ntimestampbndls);
 		lasttimestampbndl_micros = micros();
 #ifdef ECG_WIFI
 		udp.beginPacket(remote_ip, remote_port);
-		udp.write(resetbndl, sizeof(resetbndl));
+		udp.write(timestampbndl, sizeof(timestampbndl));
 		udp.endPacket();
 #endif // ECG_WIFI
 		ntimestampbndls--;
+		if(ntimestampbndls == 0){
+			send_timestampbndl_stop();
+		}
 	}
 }
 
@@ -791,7 +929,7 @@ void loop()
 	osctime now = timenow();
 	/* noInterrupts(); */
 	/* osctime now = DS3234_date_to_osctime(DS3234_get_date()); */
-	/* now.fractionofseconds = (uint32_t)(0xFFFFFFFFUL * ((micros() - micros_ref) / 1000000.)); */
+	/* now.frac_sec = (uint32_t)(0xFFFFFFFFUL * ((micros() - micros_ref) / 1000000.)); */
 	/* interrupts(); */
 	tlst[tptr] = now;
 	rtecg_int a0 = analogRead(A0);

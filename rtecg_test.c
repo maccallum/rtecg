@@ -6,7 +6,6 @@
 #include <math.h>
 #include "rtecg.h"
 #include "rtecg_filter.h"
-#include "rtecg_peak.h"
 #include "rtecg_pantompkins.h"
 #include "testdat2.h"
 
