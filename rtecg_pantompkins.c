@@ -4,7 +4,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#define RTECG_PT_PRINTSTATE
+//#define RTECG_PT_PRINTSTATE
 #ifdef RTECG_PT_PRINTSTATE
 #define pl()printf("**************************************************\n");
 #define pd(fmt, ...)printf("%s(%d): "fmt, __func__, __LINE__, __VA_ARGS__);
@@ -263,9 +263,8 @@ rtecg_pt rtecg_pt_process(rtecg_pt s, rtecg_int pkf, rtecg_int maxslopef, rtecg_
 			}
 		}
 	}
-	pd("\t\t-> testing for searchback: s.havefirstpeak = %d, s.havepeak = %d, s.burn_avg2 = %d, rtecg_pt_last_spki(s).x = %u, s.rravg2 * 1.66 = %f\n", s.havefirstpeak, s.havepeak, s.burn_avg2, s.ctr - s.last_spki.x, (s.rravg2 * 1.66));
 	if(s.havefirstpeak && s.havepeak == 0 && !s.burn_avg2 && s.ctr - s.last_spki.x > (s.rravg2 * 1.66)){
-		pd("\t\t-> %s\n", "SEARCHBACK");
+		pd("\t\t-> %s\n", "triggering SEARCHBACK");
 		s.searchback = 1;
 	}
 	
