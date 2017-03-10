@@ -15,6 +15,8 @@
 #define ECG_WIFI
 #define ECG_SERIAL
 
+int ecg_send_full = 1;
+
 typedef struct _osctime
 {
 	uint32_t sec;
@@ -94,16 +96,23 @@ unsigned long lastntpsync_micros = 0;
 
 #ifdef ECG_WIFI
 // WIFI AP
-//char ssid[] = "TP-LINK_40FE00";
-//char pass[] = "78457393";
-const char ssid[] = "Bbox-04B70355";  //  your network SSID (name)
-const char pass[] = "AF6F326273676C1466C21AA45DEC43";       // your network password
+char ssid[] = "TP-LINK_40FE00";
+char pass[] = "78457393";
+//const char ssid[] = "Bbox-04B70355";  //  your network SSID (name)
+//const char pass[] = "AF6F326273676C1466C21AA45DEC43";       // your network password
 
 // WiFi remote host
 WiFiUDP udp;                                // A UDP instance to let us send and receive packets over UDP
 //const IPAddress remote_ip(192,168,0,111);        // remote IP of your computer
-const IPAddress remote_ip(192,168,1,6);        // remote IP of your computer
-const unsigned int remote_port = 9999;          // remote port to receive OSC
+const IPAddress peak_ip(192,168,0,111);        // remote IP of your computer
+//const IPAddress peak_ip(192,168,1,6);        // remote IP of your computer
+const unsigned int peak_port = 9999;          // remote port to receive OSC
+
+const IPAddress full_ip = peak_ip;
+const unsigned int full_port = 9998;          // remote port to receive OSC
+
+const IPAddress remote_ip = peak_ip;
+const unsigned int remote_port = peak_port;
 
 IPAddress ntp_time_server(209, 208, 79, 69); // pool.ntp.org
 const int timeZone = 0;
@@ -1025,55 +1034,64 @@ void loop()
 	}
 	//yield();
 
-	// put data in OSC bundle
-	float tmpf;
-	*((uint32_t *)(oscbndl + oscbndl_pnum)) = hton32(pts.ctr);
-	osc_timetag_encodeForHeader(now, oscbndl + oscbndl_time);
-	*((int32_t *)(oscbndl + oscbndl_raw)) = hton32(a0);
-	*((int32_t *)(oscbndl + oscbndl_filt)) = hton32(rtecg_pthp_y0(hp));
-	*((int32_t *)(oscbndl + oscbndl_mwi)) = hton32(rtecg_pti_y0(mwi));
-	int idx = tptr - (rtecg_pt_last_spkf(pts).x + RTECG_PKDEL) + 1;
-	if(idx < 0){
-		idx += (RTECG_FS * 2);
-	}
-	osc_timetag_encodeForHeader(tlst[idx], oscbndl + oscbndl_spkft);
-	*((int32_t *)(oscbndl + oscbndl_spkfv)) = hton32(rtecg_pt_last_spkf(pts).y);
-	tmpf = rtecg_pt_last_spkf(pts).confidence;
-	*((int32_t *)(oscbndl + oscbndl_spkfc)) = hton32(*((int32_t *)&(tmpf)));
-	idx = tptr - (rtecg_pt_last_spki(pts).x + RTECG_PKDEL) + 1;
-	if(idx < 0){
-		idx += (RTECG_FS * 2);
-	}
-	osc_timetag_encodeForHeader(tlst[idx], oscbndl + oscbndl_spkit);
-	*((int32_t *)(oscbndl + oscbndl_spkiv)) = hton32(rtecg_pt_last_spki(pts).y);
-	tmpf = rtecg_pt_last_spki(pts).confidence;
-	*((int32_t *)(oscbndl + oscbndl_spkic)) = hton32(*((int32_t *)&(tmpf)));
-	float r = pts.rr / (float)RTECG_FS;
-	if(r){
-		r = 60. / r;
-	}
-	*((int32_t *)(oscbndl + oscbndl_rr)) = hton32(*((int32_t *)&r));
-	r = pts.rravg1 / (float)RTECG_FS;
-	if(r){
-		r = 60. / r;
-	}
-	*((int32_t *)(oscbndl + oscbndl_avg1)) = hton32(*((int32_t *)&r));
-	r = pts.rravg2 / (float)RTECG_FS;
-	if(r){
-		r = 60. / r;
-	}
-	*((int32_t *)(oscbndl + oscbndl_avg2)) = hton32(*((int32_t *)&r));
-	*((int32_t *)(oscbndl + oscbndl_f1)) = hton32(*((int32_t *)&(pts.f1)));
-	*((int32_t *)(oscbndl + oscbndl_f2)) = hton32(*((int32_t *)&(pts.f2)));
-	*((int32_t *)(oscbndl + oscbndl_i1)) = hton32(*((int32_t *)&(pts.i1)));
-	*((int32_t *)(oscbndl + oscbndl_i2)) = hton32(*((int32_t *)&(pts.i2)));
+	if(ecg_send_full || pts.havepeak){
+		// put data in OSC bundle
+		float tmpf;
+		*((uint32_t *)(oscbndl + oscbndl_pnum)) = hton32(pts.ctr);
+		osc_timetag_encodeForHeader(now, oscbndl + oscbndl_time);
+		*((int32_t *)(oscbndl + oscbndl_raw)) = hton32(a0);
+		*((int32_t *)(oscbndl + oscbndl_filt)) = hton32(rtecg_pthp_y0(hp));
+		*((int32_t *)(oscbndl + oscbndl_mwi)) = hton32(rtecg_pti_y0(mwi));
+		int idx = tptr - (rtecg_pt_last_spkf(pts).x + RTECG_PKDEL) + 1;
+		if(idx < 0){
+			idx += (RTECG_FS * 2);
+		}
+		osc_timetag_encodeForHeader(tlst[idx], oscbndl + oscbndl_spkft);
+		*((int32_t *)(oscbndl + oscbndl_spkfv)) = hton32(rtecg_pt_last_spkf(pts).y);
+		tmpf = rtecg_pt_last_spkf(pts).confidence;
+		*((int32_t *)(oscbndl + oscbndl_spkfc)) = hton32(*((int32_t *)&(tmpf)));
+		idx = tptr - (rtecg_pt_last_spki(pts).x + RTECG_PKDEL) + 1;
+		if(idx < 0){
+			idx += (RTECG_FS * 2);
+		}
+		osc_timetag_encodeForHeader(tlst[idx], oscbndl + oscbndl_spkit);
+		*((int32_t *)(oscbndl + oscbndl_spkiv)) = hton32(rtecg_pt_last_spki(pts).y);
+		tmpf = rtecg_pt_last_spki(pts).confidence;
+		*((int32_t *)(oscbndl + oscbndl_spkic)) = hton32(*((int32_t *)&(tmpf)));
+		float r = pts.rr / (float)RTECG_FS;
+		if(r){
+			r = 60. / r;
+		}
+		*((int32_t *)(oscbndl + oscbndl_rr)) = hton32(*((int32_t *)&r));
+		r = pts.rravg1 / (float)RTECG_FS;
+		if(r){
+			r = 60. / r;
+		}
+		*((int32_t *)(oscbndl + oscbndl_avg1)) = hton32(*((int32_t *)&r));
+		r = pts.rravg2 / (float)RTECG_FS;
+		if(r){
+			r = 60. / r;
+		}
+		*((int32_t *)(oscbndl + oscbndl_avg2)) = hton32(*((int32_t *)&r));
+		*((int32_t *)(oscbndl + oscbndl_f1)) = hton32(*((int32_t *)&(pts.f1)));
+		*((int32_t *)(oscbndl + oscbndl_f2)) = hton32(*((int32_t *)&(pts.f2)));
+		*((int32_t *)(oscbndl + oscbndl_i1)) = hton32(*((int32_t *)&(pts.i1)));
+		*((int32_t *)(oscbndl + oscbndl_i2)) = hton32(*((int32_t *)&(pts.i2)));
 	
-	// ship it
+		// ship it
 #ifdef ECG_WIFI
-	udp.beginPacket(remote_ip, remote_port);
-	udp.write(oscbndl, oscbndl_size);
-	udp.endPacket();
+		if(ecg_send_full){
+			udp.beginPacket(full_ip, full_port);
+			udp.write(oscbndl, oscbndl_size);
+			udp.endPacket();
+		}
+		if(pts.havepeak){
+			udp.beginPacket(peak_ip, peak_port);
+			udp.write(oscbndl, oscbndl_size);
+			udp.endPacket();
+		}
 #endif // ECG_WIFI
+	}
 #ifdef ECG_SERIAL
 		//SLIP//Serial.beginPacket();
 		//SLIP//Serial.endPacket();

@@ -4,7 +4,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-//#define RTECG_PT_PRINTSTATE
+#define RTECG_PT_PRINTSTATE
 #ifdef RTECG_PT_PRINTSTATE
 #define pl()printf("**************************************************\n");
 #define pd(fmt, ...)printf("%s(%d): "fmt, __func__, __LINE__, __VA_ARGS__);
@@ -22,6 +22,68 @@ rtecg_pt rtecg_pt_init(void)
 	s.pkf = (rtecg_spk *)calloc(RTECG_PTBUFLEN, sizeof(rtecg_spk));
 	s.pki = (rtecg_spk *)calloc(RTECG_PTBUFLEN, sizeof(rtecg_spk));
 	s.burn_avg1 = s.burn_avg2 = 1;
+	return s;
+}
+
+rtecg_pt rtecg_pt_computerr(rtecg_pt s)
+{
+	if(s.havefirstpeak){
+		rtecg_float rr = (s.last_spkf.x - s.last_last_spkf.x);
+		s.rr = rr;
+		if(rr){
+			pd("\t\t-> rr = %f\n", 60. / (rr / RTECG_FS));
+		}else{
+			pd("\t\t-> rr = %f\n", 0.);
+		}
+		// avg 1
+		s.rrsum1 += rr;
+		s.rrsum1 -= s.rrbuf1[s.rrptr1];
+		s.rrbuf1[s.rrptr1] = rr;
+		if(s.burn_avg1){
+			s.rravg1 = s.rrsum1 / (rtecg_float)s.rrptr1;
+		}else{
+			s.rravg1 = s.rrsum1 / 8.;
+		}
+		if(++(s.rrptr1) == 8){
+			s.rrptr1 = 0;
+			s.burn_avg1 = 0;
+		}
+							
+		if(rr){
+			pd("\t\t-> avg 1 = %f\n", 60. / (s.rravg1 / RTECG_FS));
+		}else{
+			pd("\t\t-> avg 1 = %f\n", 0.);
+		}
+		if(s.burn_avg2){
+			pd("\t\t-> %s", "burning avg2...\n");
+			// avg 2
+			s.rrsum2 += rr;
+			s.rrsum2 -= s.rrbuf2[s.rrptr2];
+			s.rrbuf2[s.rrptr2] = rr;
+			s.rravg2 = s.rrsum2 / (rtecg_float)s.rrptr2;
+			if(++(s.rrptr2) == 8){
+				s.rrptr2 = 0;
+				s.burn_avg2 = 0;
+			}
+		}else{
+			// avg 2
+			if(rr >= .92 * s.rravg2 && rr <= 1.16 * s.rravg2){
+				pd("\t\t-> %f <= %f <= %f\n", .92 * s.rravg2, rr, 1.16 * s.rravg2);
+				s.rrsum2 += rr;
+				s.rrsum2 -= s.rrbuf2[s.rrptr2];
+				s.rrbuf2[s.rrptr2] = rr;
+				if(++(s.rrptr2) == 8){
+					s.rrptr2 = 0;
+				}
+				s.rravg2 = s.rrsum2 / 8.;
+			}
+		}
+		if(rr){
+			pd("\t\t-> avg 2 = %f\n", 60. / (s.rravg2 / RTECG_FS));
+		}else{
+			pd("\t\t-> avg 2 = %f\n", 0.);
+		}
+	}
 	return s;
 }
 
@@ -151,69 +213,15 @@ rtecg_pt rtecg_pt_process(rtecg_pt s, rtecg_int pkf, rtecg_int maxslopef, rtecg_
 					}else{
 						s.havepeak = 1;
 						pd("\t\t-> we have a peak!\n\t\t\t\tin the filtered signal, its value is %d, and it's %d samples in the past\n\t\t\t\tin the mwi signal, its value is %d, and it's %d samples in the past\n", pkmax, s.ctr - s.pkf[pkidx].x, pki, 0);
-						// compute rr interval
-						if(s.havefirstpeak){
-							rtecg_float rr = (s.pkf[pkidx].x - s.last_spkf.x);
-							s.rr = rr;
-							if(rr){
-								pd("\t\t-> rr = %f\n", 60. / (rr / RTECG_FS));
-							}else{
-								pd("\t\t-> rr = %f\n", 0.);
-							}
-							// avg 1
-							s.rrsum1 += rr;
-							s.rrsum1 -= s.rrbuf1[s.rrptr1];
-							s.rrbuf1[s.rrptr1] = rr;
-							if(s.burn_avg1){
-								s.rravg1 = s.rrsum1 / (rtecg_float)s.rrptr1;
-							}else{
-								s.rravg1 = s.rrsum1 / 8.;
-							}
-							if(++(s.rrptr1) == 8){
-								s.rrptr1 = 0;
-								s.burn_avg1 = 0;
-							}
-							
-							if(rr){
-								pd("\t\t-> avg 1 = %f\n", 60. / (s.rravg1 / RTECG_FS));
-							}else{
-								pd("\t\t-> avg 1 = %f\n", 0.);
-							}
-							if(s.burn_avg2){
-								pd("\t\t-> %s", "burning avg2...\n");
-								// avg 2
-								s.rrsum2 += rr;
-								s.rrsum2 -= s.rrbuf2[s.rrptr2];
-								s.rrbuf2[s.rrptr2] = rr;
-								s.rravg2 = s.rrsum2 / (rtecg_float)s.rrptr2;
-								if(++(s.rrptr2) == 8){
-									s.rrptr2 = 0;
-									s.burn_avg2 = 0;
-								}
-							}else{
-								// avg 2
-								if(rr >= .92 * s.rravg2 && rr <= 1.16 * s.rravg2){
-									pd("\t\t-> %f <= %f <= %f\n", .92 * s.rravg2, rr, 1.16 * s.rravg2);
-									s.rrsum2 += rr;
-									s.rrsum2 -= s.rrbuf2[s.rrptr2];
-									s.rrbuf2[s.rrptr2] = rr;
-									if(++(s.rrptr2) == 8){
-										s.rrptr2 = 0;
-									}
-									s.rravg2 = s.rrsum2 / 8.;
-								}
-							}
-							if(rr){
-								pd("\t\t-> avg 2 = %f\n", 60. / (s.rravg2 / RTECG_FS));
-							}else{
-								pd("\t\t-> avg 2 = %f\n", 0.);
-							}
-						}
 						// record peaks
 						s.last_last_spkf = s.last_spkf;
 						s.last_last_spki = s.last_spki;
 						s.last_spkf = (rtecg_spk){s.pkf[pkidx].x, s.pkf[pkidx].y, s.pkf[pkidx].maxslope, 1.};
 						s.last_spki = (rtecg_spk){s.pki[s.ptri].x, s.pki[s.ptri].y, s.pki[s.ptri].maxslope, 1.};
+						// compute rr interval
+						if(s.havefirstpeak){
+							s = rtecg_pt_computerr(s);
+						}
 						// update noise estimates for filtered signal
 						while(s.tptrf < pkidx){
 							s.tnpkf = 0.125 * s.pkf[s.tptrf].y + .875 * s.tnpkf;
@@ -255,7 +263,9 @@ rtecg_pt rtecg_pt_process(rtecg_pt s, rtecg_int pkf, rtecg_int maxslopef, rtecg_
 			}
 		}
 	}
-	if(s.havefirstpeak && s.havepeak == 0 && !s.burn_avg2 && rtecg_pt_last_spki(s).x > (s.rravg2 * 1.66)){
+	pd("\t\t-> testing for searchback: s.havefirstpeak = %d, s.havepeak = %d, s.burn_avg2 = %d, rtecg_pt_last_spki(s).x = %u, s.rravg2 * 1.66 = %f\n", s.havefirstpeak, s.havepeak, s.burn_avg2, s.ctr - s.last_spki.x, (s.rravg2 * 1.66));
+	if(s.havefirstpeak && s.havepeak == 0 && !s.burn_avg2 && s.ctr - s.last_spki.x > (s.rravg2 * 1.66)){
+		pd("\t\t-> %s\n", "SEARCHBACK");
 		s.searchback = 1;
 	}
 	
@@ -370,6 +380,10 @@ rtecg_pt rtecg_pt_searchback(rtecg_pt s)
 		s.last_last_spki = s.last_spki;
 		s.last_spkf = (rtecg_spk){s.pkf[pkfidx].x, s.pkf[pkfidx].y, s.pkf[pkfidx].maxslope, c};
 		s.last_spki = (rtecg_spk){s.pki[pkiidx].x, s.pki[pkiidx].y, s.pki[pkiidx].maxslope, c};
+		// compute rr interval
+		if(s.havefirstpeak){
+			s = rtecg_pt_computerr(s);
+		}
 		// update signal estimates for filtered signal and mwi
 		// this was found using searchback, so use the other formula
 		spkf = .25 * s.pkf[pkfidx].y + .75 * spkf;

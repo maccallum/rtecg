@@ -14,7 +14,7 @@ extern "C" {
 // 0: 		peakf < f2 && peaki < i2 (searchback)
 typedef struct _rtecg_spk
 {
-	rtecg_int x;
+	rtecg_ctr x;
 	rtecg_int y;
 	rtecg_int maxslope;
 	rtecg_float confidence;

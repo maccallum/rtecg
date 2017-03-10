@@ -189,7 +189,7 @@
 					"numoutlets" : 1,
 					"outlettype" : [ "" ],
 					"patching_rect" : [ 1296.0, 681.5, 416.0, 387.0 ],
-					"text" : "/was/ecg/time : 2017-03-09T20:22:12.656899Z,\n/was/ecg/spkf/time : 2017-03-09T20:22:11.831865Z,\n/was/ecg/samplenum : 44641,\n/ecg/samplenum : 44642,\n/ecg/time : 2017-03-09T20:22:12.661899Z,\n/ecg/raw : 567,\n/ecg/filtered : 0,\n/ecg/mwi : 1192,\n/ecg/spkf/time : 2017-03-09T20:22:12.556889Z,\n/ecg/spkf/value : 126,\n/ecg/spkf/confidence : 1.,\n/ecg/spki/time : 2017-03-09T20:22:12.611889Z,\n/ecg/spki/value : 5933,\n/ecg/spki/confidence : 1.,\n/ecg/rr : 82.7586,\n/ecg/rravg/1 : 82.0513,\n/ecg/rravg/2 : 82.0513,\n/ecg/f1 : 46.1701,\n/ecg/f2 : 23.0851,\n/ecg/i1 : 2819.53,\n/ecg/i2 : 1409.77,\n/sys/time : 2017-03-09T20:22:12.746416Z,\n/droppedpacket : false,\n/time/delta/transmission : 0.0845167,\n/ecg/time/delta : 0.005,\n/peak : true,\n/ecg/spkf/delay : 0.189527",
+					"text" : "/was/ecg/time : 2017-03-09T22:43:54.636160Z,\n/was/ecg/spkf/time : 2017-03-09T22:43:53.851136Z,\n/was/ecg/samplenum : 51175,\n/ecg/samplenum : 51176,\n/ecg/time : 2017-03-09T22:43:54.641161Z,\n/ecg/raw : 547,\n/ecg/filtered : 0,\n/ecg/mwi : 470,\n/ecg/spkf/time : 2017-03-09T22:43:54.536156Z,\n/ecg/spkf/value : 99,\n/ecg/spkf/confidence : 1.,\n/ecg/spki/time : 2017-03-09T22:43:54.591157Z,\n/ecg/spki/value : 3094,\n/ecg/spki/confidence : 1.,\n/ecg/rr : 87.5912,\n/ecg/rravg/1 : 89.0538,\n/ecg/rravg/2 : 89.0538,\n/ecg/f1 : 36.4714,\n/ecg/f2 : 18.2357,\n/ecg/i1 : 1060.83,\n/ecg/i2 : 530.413,\n/sys/time : 2017-03-09T22:43:54.722371Z,\n/droppedpacket : false,\n/time/delta/transmission : 0.0812095,\n/ecg/time/delta : 0.005001,\n/peak : true,\n/ecg/spkf/delay : 0.186215",
 					"textcolor" : [ 1.0, 1.0, 1.0, 1.0 ]
 				}
 
@@ -218,7 +218,7 @@
 					"numoutlets" : 1,
 					"outlettype" : [ "" ],
 					"patching_rect" : [ 859.0, 651.5, 416.0, 374.0 ],
-					"text" : "/was/ecg/time : 2017-03-09T20:22:13.126913Z,\n/was/ecg/spkf/time : 2017-03-09T20:22:12.556889Z,\n/was/ecg/samplenum : 44735,\n/ecg/samplenum : 44736,\n/ecg/time : 2017-03-09T20:22:13.131913Z,\n/ecg/raw : 464,\n/ecg/filtered : 18,\n/ecg/mwi : 26,\n/ecg/spkf/time : 2017-03-09T20:22:12.556889Z,\n/ecg/spkf/value : 126,\n/ecg/spkf/confidence : 1.,\n/ecg/spki/time : 2017-03-09T20:22:12.611889Z,\n/ecg/spki/value : 5933,\n/ecg/spki/confidence : 1.,\n/ecg/rr : 82.7586,\n/ecg/rravg/1 : 82.0513,\n/ecg/rravg/2 : 82.0513,\n/ecg/f1 : 45.4613,\n/ecg/f2 : 22.7306,\n/ecg/i1 : 2819.53,\n/ecg/i2 : 1409.77,\n/sys/time : 2017-03-09T20:22:13.232966Z,\n/droppedpacket : false,\n/time/delta/transmission : 0.101053,\n/ecg/time/delta : 0.005,\n/peak : false",
+					"text" : "/was/ecg/time : 2017-03-09T22:43:54.926157Z,\n/was/ecg/spkf/time : 2017-03-09T22:43:54.536156Z,\n/was/ecg/samplenum : 51233,\n/ecg/samplenum : 51234,\n/ecg/time : 2017-03-09T22:43:54.931156Z,\n/ecg/raw : 478,\n/ecg/filtered : 2,\n/ecg/mwi : 16,\n/ecg/spkf/time : 2017-03-09T22:43:54.536156Z,\n/ecg/spkf/value : 99,\n/ecg/spkf/confidence : 1.,\n/ecg/spki/time : 2017-03-09T22:43:54.591157Z,\n/ecg/spki/value : 3094,\n/ecg/spki/confidence : 1.,\n/ecg/rr : 87.5912,\n/ecg/rravg/1 : 89.0538,\n/ecg/rravg/2 : 89.0538,\n/ecg/f1 : 36.9927,\n/ecg/f2 : 18.4964,\n/ecg/i1 : 1060.83,\n/ecg/i2 : 530.413,\n/sys/time : 2017-03-09T22:43:55.022863Z,\n/droppedpacket : false,\n/time/delta/transmission : 0.0917072,\n/ecg/time/delta : 0.004999,\n/peak : false",
 					"textcolor" : [ 1.0, 1.0, 1.0, 1.0 ]
 				}
 
@@ -415,7 +415,7 @@
 					"numoutlets" : 1,
 					"outlettype" : [ "" ],
 					"patching_rect" : [ 428.0, 477.0, 387.0, 184.0 ],
-					"text" : "/time/stop,\n/t2 : 2017-03-09T20:18:43.878300Z,\n/time/sync : [8, 2017-03-09T20:18:43.793378Z],\n/t1 : 2017-03-09T20:18:43.793378Z,\n/i : 8,\n/d : 0.0849217,\n/sum : 1.21459,\n/avg : 0.151823,\n/lst : [0.533972, 0.0848835, 0.0845165, 0.0846605, 0.0853686, 0.0847106, 0.0867127, 0.0848407, 0.0849217],\n/max : 0.533972",
+					"text" : "/time/stop,\n/t2 : 2017-03-09T22:39:53.221144Z,\n/time/sync : [8, 2017-03-09T22:39:53.137743Z],\n/t1 : 2017-03-09T22:39:53.137743Z,\n/i : 8,\n/d : 0.0834007,\n/sum : 0.742615,\n/avg : 0.0928269,\n/lst : [0.0848424, 0.0857015, 0.0810155, 0.0812105, 0.0812926, 0.0809886, 0.0808836, 0.0832797, 0.0834007],\n/max : 0.0857015",
 					"textcolor" : [ 1.0, 1.0, 1.0, 1.0 ]
 				}
 
@@ -680,7 +680,7 @@
 					"numoutlets" : 1,
 					"outlettype" : [ "" ],
 					"patching_rect" : [ 859.0, 76.0, 341.0, 116.0 ],
-					"text" : "/aa/ecg : [44734, 2017-03-09T20:22:13.121913Z, 461, 19, 27, 2017-03-09T20:22:12.556889Z, 126, 1., 2017-03-09T20:22:12.611889Z, 5933, 1., 82.7586, 82.0513, 82.0513, 45.4613, 22.7306, 2819.53, 1409.77],\n/sys/time : 2017-03-09T20:22:13.206903Z",
+					"text" : "/aa/ecg : [51234, 2017-03-09T22:43:54.931156Z, 478, 2, 16, 2017-03-09T22:43:54.536156Z, 99, 1., 2017-03-09T22:43:54.591157Z, 3094, 1., 87.5912, 89.0538, 89.0538, 36.9927, 18.4964, 1060.83, 530.413],\n/sys/time : 2017-03-09T22:43:55.022863Z",
 					"textcolor" : [ 1.0, 1.0, 1.0, 1.0 ]
 				}
 
@@ -694,7 +694,7 @@
 					"outlettype" : [ "" ],
 					"patching_rect" : [ 687.0, 24.0, 144.0, 20.0 ],
 					"style" : "",
-					"text" : "udpreceive 9999 CNMAT"
+					"text" : "udpreceive 9998 CNMAT"
 				}
 
 			}
@@ -936,6 +936,15 @@
 , 			{
 				"patchline" : 				{
 					"destination" : [ "obj-22", 0 ],
+					"disabled" : 0,
+					"hidden" : 0,
+					"source" : [ "obj-16", 1 ]
+				}
+
+			}
+, 			{
+				"patchline" : 				{
+					"destination" : [ "obj-29", 0 ],
 					"disabled" : 0,
 					"hidden" : 0,
 					"source" : [ "obj-16", 1 ]

@@ -19,13 +19,18 @@ int main(int ac, char **av)
 {
 	print_defines();
 	int n = sizeof(testdat) / sizeof(int);
+	//n *= 2;
 	char *keys[] = {"raw", "lp", "hp", "mwi", "peaksf", "peaksi", "spkf", "npkf", "spki", "npki", "f1", "f2", "i1", "i2", "rr", "rravg1", "rravg2"};
 	rtecg_float out[sizeof(keys) / sizeof(char*)][n];
 	memset(out, 0, (sizeof(keys) / sizeof(char*)) * n * sizeof(rtecg_float));
 	for(int i = 0; i < n; i++){
-		//out[0][i] = testdat[i];
-		out[0][i] = rand();
+		out[0][i] = testdat[i];
+		//out[0][i] = (rand() / (double)RAND_MAX) * 1023.;
 	}
+	/* for(int i = n / 2; i < n; i++){ */
+	/* 	out[0][i] = testdat[i - (n / 2)]; */
+	/* 	//out[0][i] = rand(); */
+	/* } */
 
 	enum{
 		RAW = 0, LP, HP, MWI, PKF, PKI, SPKF, NPKF, SPKI, NPKI, F1, F2, I1, I2, RR, RRAVG1, RRAVG2
@@ -60,6 +65,9 @@ int main(int ac, char **av)
 		
 		// classification
 		pts = rtecg_pt_process(pts, rtecg_pk_y0(pkf) * rtecg_pk_xm82(pkf), rtecg_pk_maxslope(pkf), rtecg_pk_y0(pki) * rtecg_pk_xm82(pki), rtecg_pk_maxslope(pki));
+		if(pts.searchback){
+			pts = rtecg_pt_searchback(pts);
+		}
 	  	if(pts.havepeak){
 			out[SPKF][i - rtecg_pt_last_spkf(pts).x] = 1;
 			out[SPKI][i - rtecg_pt_last_spki(pts).x] = 1;
