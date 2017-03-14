@@ -39,12 +39,13 @@ rtecg_pt rtecg_pt_computerr(rtecg_pt s)
 		s.rrsum1 += rr;
 		s.rrsum1 -= s.rrbuf1[s.rrptr1];
 		s.rrbuf1[s.rrptr1] = rr;
+		s.rrptr1++;
 		if(s.burn_avg1){
 			s.rravg1 = s.rrsum1 / (rtecg_float)s.rrptr1;
 		}else{
 			s.rravg1 = s.rrsum1 / 8.;
 		}
-		if(++(s.rrptr1) == 8){
+		if(s.rrptr1 == 8){
 			s.rrptr1 = 0;
 			s.burn_avg1 = 0;
 		}
@@ -58,10 +59,10 @@ rtecg_pt rtecg_pt_computerr(rtecg_pt s)
 			pd("\t\t-> %s", "burning avg2...\n");
 			// avg 2
 			s.rrsum2 += rr;
-			s.rrsum2 -= s.rrbuf2[s.rrptr2];
 			s.rrbuf2[s.rrptr2] = rr;
+			s.rrptr2++;
 			s.rravg2 = s.rrsum2 / (rtecg_float)s.rrptr2;
-			if(++(s.rrptr2) == 8){
+			if(s.rrptr2 == 8){
 				s.rrptr2 = 0;
 				s.burn_avg2 = 0;
 			}
@@ -151,9 +152,9 @@ rtecg_pt rtecg_pt_process(rtecg_pt s, rtecg_int pkf, rtecg_int maxslopef, rtecg_
 			s.npki = 0.125 * pki + .875 * s.npki;
 			s.i1 = s.npki + .25 * (s.spki - s.npki);
 			s.i2 = s.i1 * .5;
-		}else if(pki < s.ti2 / 2.){
+			//}else if(pki < s.ti2 / 2.){
 			// it's less than half of the second threshold---just skip it
-			;
+			//;
 		}else{
 			pd("\t\t-> adding to list (%d)\n", s.ptri);
 			s.pki[s.ptri] = (rtecg_spk){s.ctr, pki, maxslopei, 0};

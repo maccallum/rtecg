@@ -153,6 +153,7 @@ const int pin_flash = 0; // GPIO pin that the flash button is wired to
 
 // used by a1 isr
 volatile unsigned long micros_ref = 0;
+osctime current_date;
 volatile int int_a1 = 0;
 
 // used by flash button isr
@@ -372,7 +373,7 @@ osctime DS3234_date_to_osctime(struct DS3234_date d)
 osctime timenow()
 {
 	noInterrupts();
-	osctime now = DS3234_date_to_osctime(DS3234_get_date());
+	osctime now = current_date;//DS3234_date_to_osctime(DS3234_get_date());
 	now.frac_sec = (uint32_t)(0xFFFFFFFFUL * ((micros() - micros_ref) / 1000000.));
 	interrupts();
 	return now;
@@ -696,21 +697,7 @@ struct DS3234_date  osctime_to_date(osctime timetag)
 	//current minute.
 	//Given the year & day of year, determine month & day of month
 	month = osc_timetag_getmonth(&day, leap);
-	Serial.println("date: ");
-	Serial.println(year);
-	Serial.println(month);
-	Serial.println(mday);
-	Serial.println(hour);
-	Serial.println(minute);
-	Serial.println(secs);
 	DS3234_date d = make_DS3234_date(secs, minute, hour, 0, mday, month, year);
-	Serial.println("date encoded: ");
-	Serial.println(d.year);
-	Serial.println(d.mon_plus_cent);
-	Serial.println(d.mday);
-	Serial.println(d.hour);
-	Serial.println(d.min);
-	Serial.println(d.sec);
 	return d;
 }
 
@@ -1004,20 +991,22 @@ void loop()
 		tmicros_cur = micros();
 	}
 	tmicros_prev = tmicros_cur;
-	// get time and read pin
+	// read pin
+	rtecg_int a0 = analogRead(A0);
+	// if alarm 1 went off, clear it and get the time
+	if(int_a1){
+		current_date = DS3234_date_to_osctime(DS3234_get_date());
+		int_a1 = 0;
+		DS3234_set_reg(DS3234_SREG_WRITE, DS3234_get_reg(DS3234_SREG_READ) & ~DS3234_A1F);
+	}
 	osctime now = timenow();
 	tlst[tptr] = now;
-	rtecg_int a0 = analogRead(A0);
+	
 	// now yield
 	yield();
 	// turn off LED if it was on from previous loop
 	if(digitalRead(pin_flash) == HIGH){
 		digitalWrite(pin_led, HIGH);
-	}
-	// if alarm 1 went off, clear it
-	if(int_a1){
-		int_a1 = 0;
-		DS3234_set_reg(DS3234_SREG_WRITE, DS3234_get_reg(DS3234_SREG_READ) & ~DS3234_A1F);
 	}
 	// if flash button was pressed, check state and see look at interval to see if there's something we should do
 	if(int_flash){

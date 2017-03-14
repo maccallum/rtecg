@@ -151,7 +151,7 @@
 					"numoutlets" : 1,
 					"outlettype" : [ "" ],
 					"patching_rect" : [ 413.0, 237.0, 263.0, 75.0 ],
-					"text" : "/sys/time : 2017-03-11T12:12:37.265242Z,\n/flash : 2017-03-11T12:12:37.181874Z",
+					"text" : "/sys/time : 2017-03-11T12:53:14.404968Z,\n/flash : 2017-03-11T12:53:14.298075Z",
 					"textcolor" : [ 1.0, 1.0, 1.0, 1.0 ]
 				}
 
@@ -409,11 +409,13 @@
 					"fontface" : 0,
 					"fontsize" : 12.0,
 					"id" : "obj-10",
+					"linecount" : 27,
 					"maxclass" : "o.display",
 					"numinlets" : 1,
 					"numoutlets" : 1,
 					"outlettype" : [ "" ],
-					"patching_rect" : [ 1296.0, 681.5, 416.0, 34.0 ],
+					"patching_rect" : [ 1296.0, 681.5, 416.0, 387.0 ],
+					"text" : "/was/ecg/time : 2017-03-11T13:15:08.999992Z,\n/was/ecg/spkf/time : 2017-03-11T13:15:08.154992Z,\n/was/ecg/samplenum : 2255,\n/ecg/samplenum : 2256,\n/ecg/time : 2017-03-11T13:15:09.004999Z,\n/ecg/raw : 573,\n/ecg/filtered : -4,\n/ecg/mwi : 1526,\n/ecg/spkf/time : 2017-03-11T13:15:08.899996Z,\n/ecg/spkf/value : 138,\n/ecg/spkf/confidence : 1.,\n/ecg/spki/time : 2017-03-11T13:15:08.954992Z,\n/ecg/spki/value : 7226,\n/ecg/spki/confidence : 1.,\n/ecg/rr : 80.5369,\n/ecg/rravg/1 : 81.4941,\n/ecg/rravg/2 : 69.8835,\n/ecg/f1 : 52.1261,\n/ecg/f2 : 26.0631,\n/ecg/i1 : 3983.65,\n/ecg/i2 : 1991.83,\n/sys/time : 2017-03-11T13:15:09.083794Z,\n/droppedpacket : false,\n/time/delta/transmission : 0.0787946,\n/ecg/time/delta : 0.005007,\n/peak : true,\n/ecg/spkf/delay : 0.183798",
 					"textcolor" : [ 1.0, 1.0, 1.0, 1.0 ]
 				}
 
@@ -436,11 +438,13 @@
 					"fontface" : 0,
 					"fontsize" : 12.0,
 					"id" : "obj-60",
+					"linecount" : 26,
 					"maxclass" : "o.display",
 					"numinlets" : 1,
 					"numoutlets" : 1,
 					"outlettype" : [ "" ],
-					"patching_rect" : [ 859.0, 651.5, 416.0, 34.0 ],
+					"patching_rect" : [ 859.0, 651.5, 416.0, 374.0 ],
+					"text" : "/was/ecg/time : 2017-03-11T13:15:09.400000Z,\n/was/ecg/spkf/time : 2017-03-11T13:15:08.899996Z,\n/was/ecg/samplenum : 2335,\n/ecg/samplenum : 2336,\n/ecg/time : 2017-03-11T13:15:09.404996Z,\n/ecg/raw : 436,\n/ecg/filtered : -2,\n/ecg/mwi : 18,\n/ecg/spkf/time : 2017-03-11T13:15:08.899996Z,\n/ecg/spkf/value : 138,\n/ecg/spkf/confidence : 1.,\n/ecg/spki/time : 2017-03-11T13:15:08.954992Z,\n/ecg/spki/value : 7226,\n/ecg/spki/confidence : 1.,\n/ecg/rr : 80.5369,\n/ecg/rravg/1 : 81.4941,\n/ecg/rravg/2 : 69.8835,\n/ecg/f1 : 54.1903,\n/ecg/f2 : 27.0952,\n/ecg/i1 : 3983.65,\n/ecg/i2 : 1991.83,\n/sys/time : 2017-03-11T13:15:09.483798Z,\n/droppedpacket : false,\n/time/delta/transmission : 0.0788017,\n/ecg/time/delta : 0.004996,\n/peak : false",
 					"textcolor" : [ 1.0, 1.0, 1.0, 1.0 ]
 				}
 
@@ -729,13 +733,13 @@
 					"fontface" : 0,
 					"fontsize" : 12.0,
 					"id" : "obj-8",
-					"linecount" : 2,
+					"linecount" : 4,
 					"maxclass" : "o.display",
 					"numinlets" : 1,
 					"numoutlets" : 1,
 					"outlettype" : [ "" ],
-					"patching_rect" : [ 98.0, 237.0, 263.0, 48.0 ],
-					"text" : "/sys/time : 2017-03-11T12:09:42.597601Z",
+					"patching_rect" : [ 98.0, 237.0, 263.0, 75.0 ],
+					"text" : "/sys/time : 2017-03-11T12:43:51.086089Z,\n/reset : 2017-03-11T12:44:40.000000Z",
 					"textcolor" : [ 1.0, 1.0, 1.0, 1.0 ]
 				}
 
@@ -796,11 +800,13 @@
 					"fontface" : 0,
 					"fontsize" : 12.0,
 					"id" : "obj-2",
+					"linecount" : 6,
 					"maxclass" : "o.display",
 					"numinlets" : 1,
 					"numoutlets" : 1,
 					"outlettype" : [ "" ],
-					"patching_rect" : [ 859.0, 76.0, 341.0, 34.0 ],
+					"patching_rect" : [ 859.0, 76.0, 341.0, 102.0 ],
+					"text" : "/aa/ecg : [2336, 2017-03-11T13:15:09.404996Z, 436, -2, 18, 2017-03-11T13:15:08.899996Z, 138, 1., 2017-03-11T13:15:08.954992Z, 7226, 1., 80.5369, 81.4941, 69.8835, 54.1903, 27.0952, 3983.65, 1991.83],\n/sys/time : 2017-03-11T13:15:09.483798Z",
 					"textcolor" : [ 1.0, 1.0, 1.0, 1.0 ]
 				}
 
