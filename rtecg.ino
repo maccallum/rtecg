@@ -319,8 +319,8 @@ struct DS3234_date make_DS3234_date(uint8_t sec,
 		dectobcd(min),
 		dectobcd(hour),
 		dectobcd(wday),
-		//dectobcd(mday),
-		mday,
+		dectobcd(mday),
+		//mday,
 		dectobcd(mon) + century * 0x80,
 		dectobcd((uint8_t)(year - (1900 + (century * 100))))
 	};
@@ -356,7 +356,7 @@ osctime DS3234_date_to_osctime(struct DS3234_date d)
 	}
 
 	int d_mon = bcdtodec(d.mon_plus_cent & 0x7F);
-	day = bcdtodec(d.mday - 1);
+	day = bcdtodec(d.mday) - 1;
 	for(i = 1; i < d_mon; i++){
 		day += days_in_month[i - 1];
 	}
@@ -912,6 +912,10 @@ void setup()
 	Serial.begin(115200);
 #endif // ECG_SERIAL
 
+	Serial.printf(" ESP8266 Chip id = %08X\n", ESP.getChipId());
+	Serial.print(" ESP8266 MAC address = ");
+	Serial.println(WiFi.macAddress());
+
 	pinMode(pin_led, OUTPUT);
 	digitalWrite(pin_led, HIGH);
 
@@ -999,6 +1003,7 @@ void loop()
 		int_a1 = 0;
 		DS3234_set_reg(DS3234_SREG_WRITE, DS3234_get_reg(DS3234_SREG_READ) & ~DS3234_A1F);
 	}
+	// timenow refers to a global var that holds the current time from the RTC
 	osctime now = timenow();
 	tlst[tptr] = now;
 	
