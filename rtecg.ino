@@ -28,18 +28,21 @@ char *oscpfx = "/aa"; // must be 3 or fewer characters
 
 // main OSC bundle
 char *oscbndl_address = "/ecg";
-char *oscbndl_typetags = ",Itiiitiftiffffffff\0";
+char *oscbndl_typetags = ",ItiiiiItifItiffffffff\0\0";
 char oscbndl[20 	// header and message size
 	     + 8	// address
-	     + 20	// typetags
+	     + 24	// typetags
 	     + 4	// packet number
 	     + 8	// time
+	     + 4	// sampling frequency
 	     + 4	// raw
 	     + 4	// filtered
 	     + 4	// mwi
+	     + 4	// spkf sample number
 	     + 8	// spkf time
 	     + 4	// spkf value
 	     + 4	// spkf confidence
+	     + 4	// spki sample number
 	     + 8	// spki time
 	     + 4	// spki value
 	     + 4	// spki confidence
@@ -50,15 +53,18 @@ char oscbndl[20 	// header and message size
 	     + 4	// f2
 	     + 4	// i1
 	     + 4];	// i2
-int oscbndl_pnum = 48;
+int oscbndl_pnum = 52;
 int oscbndl_time = oscbndl_pnum + 4;
-int oscbndl_raw = oscbndl_time + 8;
+int oscbndl_fs = oscbndl_time + 8;
+int oscbndl_raw = oscbndl_fs + 4;
 int oscbndl_filt = oscbndl_raw + 4;
 int oscbndl_mwi = oscbndl_filt + 4;
-int oscbndl_spkft = oscbndl_mwi + 4;
+int oscbndl_spkfn = oscbndl_mwi + 4;
+int oscbndl_spkft = oscbndl_spkfn + 4;
 int oscbndl_spkfv = oscbndl_spkft + 8;
 int oscbndl_spkfc = oscbndl_spkfv + 4;
-int oscbndl_spkit = oscbndl_spkfc + 4;
+int oscbndl_spkin = oscbndl_spkfc + 4;
+int oscbndl_spkit = oscbndl_spkin + 4;
 int oscbndl_spkiv = oscbndl_spkit + 8;
 int oscbndl_spkic = oscbndl_spkiv + 4;
 int oscbndl_rr = oscbndl_spkic + 4;
@@ -958,7 +964,8 @@ void setup()
 	*((int32_t *)(oscbndl + 16)) = hton32(oscbndl_size - 20); // message size
 	memcpy(oscbndl + 20, oscpfx, 3); // /aa
 	memcpy(oscbndl + 23, oscbndl_address, 4); // /ecg
-	memcpy(oscbndl + 28, oscbndl_typetags, 20); // typetags
+	memcpy(oscbndl + 28, oscbndl_typetags, 24); // typetags
+	*((int32_t *)(oscbndl + oscbndl_fs)) = hton32(RTECG_FS);
 
 	// notify the world that we did a reset
 	reset_time = timenow();
@@ -1097,6 +1104,7 @@ void loop()
 		*((int32_t *)(oscbndl + oscbndl_raw)) = hton32(a0);
 		*((int32_t *)(oscbndl + oscbndl_filt)) = hton32(rtecg_pthp_y0(hp));
 		*((int32_t *)(oscbndl + oscbndl_mwi)) = hton32(rtecg_pti_y0(mwi));
+		*((uint32_t *)(oscbndl + oscbndl_spkfn)) = hton32(pts.ctr - rtecg_pt_last_spkf(pts).x);
 		int idx = tptr - (rtecg_pt_last_spkf(pts).x + RTECG_PKDEL) + 1;
 		if(idx < 0){
 			idx += (RTECG_FS * 2);
@@ -1105,6 +1113,7 @@ void loop()
 		*((int32_t *)(oscbndl + oscbndl_spkfv)) = hton32(rtecg_pt_last_spkf(pts).y);
 		tmpf = rtecg_pt_last_spkf(pts).confidence;
 		*((int32_t *)(oscbndl + oscbndl_spkfc)) = hton32(*((int32_t *)&(tmpf)));
+		*((uint32_t *)(oscbndl + oscbndl_spkin)) = hton32(pts.ctr - rtecg_pt_last_spki(pts).x);
 		idx = tptr - (rtecg_pt_last_spki(pts).x + RTECG_PKDEL) + 1;
 		if(idx < 0){
 			idx += (RTECG_FS * 2);

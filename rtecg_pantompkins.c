@@ -416,7 +416,7 @@ rtecg_pt rtecg_pt_searchback(rtecg_pt s)
 	rtecg_spk pkimax = s.pki[0];
 	while(ptri < s.ptri){
 		rtecg_spk pki = s.pki[ptri];
-		if(pki.y > pkimax.y){
+		if(pki.y > pkimax.y && pki.x - s.last_spki.x > RTECG_MTOS(200)){
 			pkimax = pki;
 		}
 		ptri++;
