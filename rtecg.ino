@@ -1078,6 +1078,9 @@ void loop()
 	if(pts.searchback){
 		yield();
 		pts = rtecg_pt_searchback(pts);
+		if(pts.havepeak == 0){
+			pts = rtecg_pt_reset(pts);
+		}
 	}
 	if(pts.havepeak){
 		if(digitalRead(pin_flash) == HIGH){

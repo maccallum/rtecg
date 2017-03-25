@@ -15,6 +15,17 @@
 #define ps(s)
 #endif
 
+rtecg_pt rtecg_pt_reset(rtecg_pt s)
+{
+	rtecg_spk *pkf = s.pkf;
+	rtecg_spk *pki = s.pki;
+	memset(&s, 0, sizeof(rtecg_pt));
+	s.pkf = pkf;
+	s.pki = pki;
+	s.burn_avg1 = s.burn_avg2 = 1;
+	return s;
+}
+
 rtecg_pt rtecg_pt_init(void)
 {
 	rtecg_pt s;
@@ -88,6 +99,103 @@ rtecg_pt rtecg_pt_computerr(rtecg_pt s)
 	return s;
 }
 
+rtecg_pt rtecg_pt_recordPeak(rtecg_pt s, rtecg_spk spkf, rtecg_spk spki, rtecg_int searchback)
+{
+	s.havepeak = 1;
+	pd("\t\t-> we have a peak!\n\t\t\t\tin the filtered signal, its value is %d, and it's %d samples in the past\n\t\t\t\tin the mwi signal, its value is %d, and it's %d samples in the past\n", spkf.y, s.ctr - spkf.x, spki.y, 0);//pkmax, s.ctr - s.pkf[pkidx].x, pki, 0);
+	// record peaks
+	s.last_last_spkf = s.last_spkf;
+	s.last_last_spki = s.last_spki;
+	s.last_spkf = spkf;
+	s.last_spki = spki;
+
+	// compute rr interval
+	if(s.havefirstpeak){
+		s = rtecg_pt_computerr(s);
+	}
+
+	// update signal estimates for filtered signal and mwi
+	if(searchback){
+		s.spkf = .25 * spkf.y + .75 * s.spkf;
+		s.spki = .25 * spki.y + .75 * s.spki;
+	}else{
+		s.spkf = .125 * spkf.y + .875 * s.spkf;
+		s.spki = .125 * spki.y + .875 * s.spki;
+	}
+	
+	// update noise estimates for filtered signal
+	rtecg_ctr ptr = 0;
+	while(s.pkf[ptr].x != spkf.x && ptr < s.ptrf){
+		s.npkf = 0.125 * s.pkf[ptr].y + .875 * s.npkf;
+		ptr++;
+	}
+	rtecg_float npkf = s.npkf;
+	ptr++;
+	while(ptr < s.ptrf){
+		s.npkf = 0.125 * s.pkf[ptr].y + .875 * s.npkf;
+		ptr++;
+	}
+	
+	// update noise estimates for mwi
+	ptr = 0;
+	while(s.pki[ptr].x != spki.x && ptr < s.ptri){
+		s.npki = 0.125 * s.pki[ptr].y + .875 * s.npki;
+		ptr++;
+	}
+	rtecg_float npki = s.npki;
+	ptr++;
+	while(ptr < s.ptri){
+		s.npki = 0.125 * s.pki[ptr].y + .875 * s.npki;
+		ptr++;
+	}
+
+	// compute confidence. we want to compute the confidence
+	// based on the signal and noise estimates up to and including
+	// where the peak is, but not taking into account subsequent peaks
+	if(searchback){
+		rtecg_float f1 = npkf + .25 * (s.spkf - npkf);
+		rtecg_float i1 = npki + .25 * (s.spki - npki);
+		rtecg_float cf = 0.;
+		if(spkf.y >= f1){
+			cf = .75;
+		}else if(spkf.y >= f1 * 0.5){
+			cf = .5;
+		}else if(spkf.y >= 0){
+			cf = .25;
+		}else{
+			cf = 0;
+		}
+		rtecg_float ci = 0.;
+		if(spki.y >= i1){
+			ci = .75;
+		}else if(spki.y >= i1 * 0.5){
+			ci = .5;
+		}else if(spki.y >= 0){
+			ci = .25;
+		}else{
+			ci = 0;
+		}
+		s.last_spkf.confidence = cf;
+		s.last_spki.confidence = ci;
+	}else{
+		s.last_spkf.confidence = 1.;
+		s.last_spki.confidence = 1.;
+	}
+	
+	// update thresholds
+	s.f1 = s.tf1 = s.npkf + .25 * (s.spkf - s.npkf);
+	s.i1 = s.ti1 = s.npki + .25 * (s.spki - s.npki);
+	s.f2 = s.tf2 = s.f1 * .5;
+	s.i2 = s.ti2 = s.i1 * .5;
+	// reset pointers and counter
+	s.ptrf = 0;
+	s.tptrf = 0;
+	s.ptri = 0;
+					
+	s.havefirstpeak = 1;
+	return s;
+}
+
 rtecg_pt rtecg_pt_process(rtecg_pt s, rtecg_int pkf, rtecg_int maxslopef, rtecg_int pki, rtecg_int maxslopei)
 {
 	pl();
@@ -124,7 +232,7 @@ rtecg_pt rtecg_pt_process(rtecg_pt s, rtecg_int pkf, rtecg_int maxslopef, rtecg_
 		pd("+ FIL: %u %d\n", s.ctr, pkf);
 		if(s.havefirstpeak &&
 		   (s.ctr - s.last_spkf.x < RTECG_MTOS(200))){
-			pd("\t\t-> it's only been %d ms since the last peak\n", RTECG_STOM(s.ctr - s.last_spkf.x));
+			pd("\t\t-> it's only been %d ms since the last peak (ctr = %u, s.last_spkf.x = %u)\n", RTECG_STOM(s.ctr) - RTECG_STOM(s.last_spkf.x), s.ctr, s.last_spkf.x);
 			// it's been less than 200ms since the last signal peak,
 			// so this is classified as noise
 			s.npkf = 0.125 * pkf + .875 * s.npkf;
@@ -212,45 +320,48 @@ rtecg_pt rtecg_pt_process(rtecg_pt s, rtecg_int pkf, rtecg_int maxslopef, rtecg_
 						s.ti2 = s.ti1 * .5;
 						s.ptri++;
 					}else{
-						s.havepeak = 1;
-						pd("\t\t-> we have a peak!\n\t\t\t\tin the filtered signal, its value is %d, and it's %d samples in the past\n\t\t\t\tin the mwi signal, its value is %d, and it's %d samples in the past\n", pkmax, s.ctr - s.pkf[pkidx].x, pki, 0);
-						// record peaks
-						s.last_last_spkf = s.last_spkf;
-						s.last_last_spki = s.last_spki;
-						s.last_spkf = (rtecg_spk){s.pkf[pkidx].x, s.pkf[pkidx].y, s.pkf[pkidx].maxslope, 1.};
-						s.last_spki = (rtecg_spk){s.pki[s.ptri].x, s.pki[s.ptri].y, s.pki[s.ptri].maxslope, 1.};
-						// compute rr interval
-						if(s.havefirstpeak){
-							s = rtecg_pt_computerr(s);
-						}
-						// update noise estimates for filtered signal
-						while(s.tptrf < pkidx){
-							s.tnpkf = 0.125 * s.pkf[s.tptrf].y + .875 * s.tnpkf;
-							s.tptrf++;
-						}
-						s.tnpkf = pkidx + 1;
-						while(s.tptrf < s.ptrf){
-							s.tnpkf = 0.125 * s.pkf[s.tptrf].y + .875 * s.tnpkf;
-							s.tptrf++;
-						}
-						// update signal estimates for filtered signal and mwi
-						s.tspkf = .125 * s.pkf[pkidx].y + .875 * s.tspkf;
-						s.tspki = .125 * s.pki[s.ptri].y + .875 * s.tspki;
-						// transfer temp values to permanent ones
-						s.spkf = s.tspkf;
-						s.spki = s.tspki;
-						s.npkf = s.tnpkf;
-						s.npki = s.tnpki;
-						s.f1 = s.tf1 = s.tnpkf + .25 * (s.tspkf - s.tnpkf);
-						s.f2 = s.tf2 = s.f1 * .5;
-						s.i1 = s.ti1 = s.tnpki + .25 * (s.tspki - s.tnpki);
-						s.i2 = s.ti2 = s.i1 * .5;
-						// reset pointers and counter
-						s.ptrf = 0;
-						s.tptrf = 0;
-						s.ptri = 0;
+						//s.pkf[pkidx].confidence = 1.;
+						//s.pki[s.ptri].confidence = 1.;
+						s = rtecg_pt_recordPeak(s, s.pkf[pkidx], s.pki[s.ptri], 0);
+						// s.havepeak = 1;
+						// pd("\t\t-> we have a peak!\n\t\t\t\tin the filtered signal, its value is %d, and it's %d samples in the past\n\t\t\t\tin the mwi signal, its value is %d, and it's %d samples in the past\n", pkmax, s.ctr - s.pkf[pkidx].x, pki, 0);
+						// // record peaks
+						// s.last_last_spkf = s.last_spkf;
+						// s.last_last_spki = s.last_spki;
+						// s.last_spkf = (rtecg_spk){s.pkf[pkidx].x, s.pkf[pkidx].y, s.pkf[pkidx].maxslope, 1.};
+						// s.last_spki = (rtecg_spk){s.pki[s.ptri].x, s.pki[s.ptri].y, s.pki[s.ptri].maxslope, 1.};
+						// // compute rr interval
+						// if(s.havefirstpeak){
+						// 	s = rtecg_pt_computerr(s);
+						// }
+						// // update noise estimates for filtered signal
+						// while(s.tptrf < pkidx){
+						// 	s.tnpkf = 0.125 * s.pkf[s.tptrf].y + .875 * s.tnpkf;
+						// 	s.tptrf++;
+						// }
+						// s.tnpkf = pkidx + 1;
+						// while(s.tptrf < s.ptrf){
+						// 	s.tnpkf = 0.125 * s.pkf[s.tptrf].y + .875 * s.tnpkf;
+						// 	s.tptrf++;
+						// }
+						// // update signal estimates for filtered signal and mwi
+						// s.tspkf = .125 * s.pkf[pkidx].y + .875 * s.tspkf;
+						// s.tspki = .125 * s.pki[s.ptri].y + .875 * s.tspki;
+						// // transfer temp values to permanent ones
+						// s.spkf = s.tspkf;
+						// s.spki = s.tspki;
+						// s.npkf = s.tnpkf;
+						// s.npki = s.tnpki;
+						// s.f1 = s.tf1 = s.tnpkf + .25 * (s.tspkf - s.tnpkf);
+						// s.f2 = s.tf2 = s.f1 * .5;
+						// s.i1 = s.ti1 = s.tnpki + .25 * (s.tspki - s.tnpki);
+						// s.i2 = s.ti2 = s.i1 * .5;
+						// // reset pointers and counter
+						// s.ptrf = 0;
+						// s.tptrf = 0;
+						// s.ptri = 0;
 					
-						s.havefirstpeak = 1;
+						// s.havefirstpeak = 1;
 					}
 				}else{
 					// mwi doesn't have a corresponding peak in the filtered signal, so it's a noise peak
@@ -264,7 +375,7 @@ rtecg_pt rtecg_pt_process(rtecg_pt s, rtecg_int pkf, rtecg_int maxslopef, rtecg_
 			}
 		}
 	}
-	if(s.havefirstpeak && s.havepeak == 0 && !s.burn_avg2 && s.ctr - s.last_spki.x > (s.rravg2 * 1.66)){
+	if((pkf || pki) && s.havefirstpeak && s.havepeak == 0 && !s.burn_avg2 && (s.ctr - s.last_spki.x) > (s.rravg2 * 1.66)){
 		pd("\t\t-> %s\n", "triggering SEARCHBACK");
 		s.searchback = 1;
 	}
@@ -296,128 +407,55 @@ rtecg_pt rtecg_pt_process(rtecg_pt s, rtecg_int pkf, rtecg_int maxslopef, rtecg_
 rtecg_pt rtecg_pt_searchback(rtecg_pt s)
 {
 	pd("%s\n", "SEARCHBACK");
-	rtecg_float spkf = s.spkf;
-	rtecg_float spki = s.spki;
-	rtecg_float npkf = s.npkf;
-	rtecg_float npki = s.npki;
-	rtecg_float f1 = s.f1;
-	rtecg_float f2 = s.f2;
-	rtecg_float i1 = s.i1;
-	rtecg_float i2 = s.i2;
-	rtecg_int ptri = 0;
-	rtecg_int pkimax = 0, pkiidx = -1;
-	rtecg_int pkfmax = 0, pkfidx = -1;
+	if(s.ptri == 0){
+		pd("\t\t-> %s\n", "no mwi peaks to search through!");
+		s.searchback = 0;
+		return s;
+	}
+	rtecg_int ptri = 1;
+	rtecg_spk pkimax = s.pki[0];
 	while(ptri < s.ptri){
-		rtecg_int x = s.pki[ptri].x;
-		rtecg_int y = s.pki[ptri].y;
-		// we don't care about this peak if there isn't a corresponding one in the filtered signal
-		rtecg_int ptrf = 0;
-		rtecg_int pkfmint = x - (RTECG_DERIVDEL + RTECG_MWIDEL);
-		rtecg_int pkfmaxt = x;
-		if(pkfmaxt < 0){
-			ptri++;
-			continue;
-		}
-		if(pkfmint < 0){
-			pkfmint = 0; 
-		}
-		while(s.pkf[ptrf].x < pkfmint && ptrf < s.ptrf){
-			ptrf++;
-		}
-		while(s.pkf[ptrf].x < pkfmaxt && ptrf < s.ptrf){
-			if(s.pkf[ptrf].y >= pkfmax){
-				pkfmax = s.pkf[ptrf].y;
-				pkfidx = ptrf;
-			}
-			ptrf++;
-		}
-		if(pkfidx == -1){
-			ptri++;
-			continue;
-		}
-		// this mwi peak has a corresponding peak in the filtered signal, so see if it's a maximum
-		if(y > pkimax){
-			pkimax = y;
-			pkiidx = ptri;
-			/*
-			  }else if(y == pkimax &&
-			  s.pki[ptri].x - s.last_spki.x >= .92 * s.rravg2 &&
-			  s.pki[ptri].x - s.last_spki.x <= 1.16 * s.rravg2){
-			  pkimax = y;
-			  pkiidx = ptri;
-			*/
+		rtecg_spk pki = s.pki[ptri];
+		if(pki.y > pkimax.y){
+			pkimax = pki;
 		}
 		ptri++;
 	}
-	if(pkiidx > -1){
-		pd("\t\t-> %s\n", "we have an mwi peak with a corresponding peak in the filtered signal");
-		// we have an mwi peak with a corresponding peak in the filtered signal.
-		// check to see if they're both above their respective second thresholds
-		s.havepeak = 1;
-		ptri = 0;
-		while(ptri < pkiidx){
-			npki = 0.125 * s.pki[ptri].y + .875 * npki;
-			ptri++;
-		}
-		rtecg_int ptrf = 0;
-		while(ptrf < pkfidx){
-			npkf = 0.125 * s.pkf[ptrf].y + .875 * npkf;
+	pd("\t\t-> pkimax = (%u %d)\n", pkimax.x, pkimax.y);
+	rtecg_int ptrf = 0;
+	rtecg_spk pkfmax;
+	memset(&pkfmax, 0, sizeof(rtecg_spk));
+	rtecg_int havepkf = 0;
+	while(ptrf < s.ptrf){
+		rtecg_spk pkf = s.pkf[ptrf];
+		pd("\t\t-> %d %d %d\n", pkf.x, (pkimax.x - (RTECG_DERIVDEL + RTECG_MWIDEL + RTECG_MWILEN)), pkimax.x);
+		if(pkf.x < (pkimax.x - (RTECG_DERIVDEL + RTECG_MWIDEL + RTECG_MWILEN))){
+			pd("\t\t-> %s\n", "continue");
 			ptrf++;
+			continue;
 		}
-		f1 = npkf + .25 * (spkf - npkf);
-		f2 = f1 * .5;
-		i1 = npki + .25 * (spki - npki);
-		i2 = i1 * .5;
-		rtecg_float c = 0.;
-		if(s.pkf[pkfidx].y > f2){
-			c += 1. / 3.;
+		if(pkf.x > (pkimax.x)){// - (RTECG_DERIVDEL + RTECG_MWIDEL))){
+			pd("\t\t-> %s\n", "break");
+			break;
 		}
-		if(s.pki[pkiidx].y > i2){
-			c += 1. / 3.;
+		pd("\t\t-> %d %d\n", pkf.y, pkfmax.y);
+		if(pkf.y > pkfmax.y){
+			pkfmax = pkf;
+			havepkf = 1;
 		}
-		pd("\t\t-> %d %d, confidence: %f\n", s.pki[pkiidx].x, s.pki[pkiidx].y, c);
-		s.last_last_spkf = s.last_spkf;
-		s.last_last_spki = s.last_spki;
-		s.last_spkf = (rtecg_spk){s.pkf[pkfidx].x, s.pkf[pkfidx].y, s.pkf[pkfidx].maxslope, c};
-		s.last_spki = (rtecg_spk){s.pki[pkiidx].x, s.pki[pkiidx].y, s.pki[pkiidx].maxslope, c};
-		// compute rr interval
-		if(s.havefirstpeak){
-			s = rtecg_pt_computerr(s);
-		}
-		// update signal estimates for filtered signal and mwi
-		// this was found using searchback, so use the other formula
-		spkf = .25 * s.pkf[pkfidx].y + .75 * spkf;
-		spki = .125 * s.pki[pkiidx].y + .75 * spki;
-		// transfer temp values to permanent ones
-		s.spkf = s.tspkf = spkf;
-		s.spki = s.tspki = spki;
-		s.npkf = s.tnpkf = npkf;
-		s.npki = s.tnpki = npki;
-		s.f1 = s.tf1 = s.tnpkf + .25 * (s.tspkf - s.tnpkf);
-		s.f2 = s.tf2 = s.f1 * .5;
-		s.i1 = s.ti1 = s.tnpki + .25 * (s.tspki - s.tnpki);
-		s.i2 = s.ti2 = s.i1 * .5;
-		// reset pointers and counter to the found peak
-		s.ptrf = pkfidx;
-		s.tptrf = pkfidx;
-		s.ptri = pkiidx;
-					
-		s.havefirstpeak = 1;
-		s.searchback = 0;
-	}else{
-		pd("\t\t-> %s\n", "we did not find a peak during searchback");
-		s.tspkf = s.spkf;
-		s.tspki = s.spki;
-		s.tnpkf = s.npkf;
-		s.tnpki = s.npki;
-		s.tf1 = s.f1;
-		s.ti2 = s.i2;
-		s.ti1 = s.i1;
-		s.ptrf = 0;
-		s.tptrf = 0;
-		s.ptri = 0;
-		s.havefirstpeak = 0;
+		ptrf++;
 	}
+	if(havepkf == 0){
+		pd("\t\t-> couldn't find a pkf between %d and %d\n", (pkimax.x - (RTECG_DERIVDEL + RTECG_MWIDEL + RTECG_MWILEN)), pkimax.x);
+		// we have a peak in the mwi, but not in the filtered signal. we record a peak
+		// anyway, and the confidence value for the filtered signal will be 0.
+		s = rtecg_pt_recordPeak(s, (rtecg_spk){pkimax.x - (RTECG_DERIVDEL + RTECG_MWIDEL + (RTECG_MWILEN / 2)), 0, 0, 0}, pkimax, 1);
+		s.searchback = 0;
+		return s;
+	}
+	pd("\t\t-> pkfmax = (%u %d)\n", pkfmax.x, pkfmax.y);
+	s = rtecg_pt_recordPeak(s, pkfmax, pkimax, 1);
+	s.searchback = 0;
 	return s;
 }
 

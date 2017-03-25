@@ -8,10 +8,11 @@ extern "C" {
 #include "rtecg.h"
 
 // the confidence value is crude at this point:
-// 1:		peakf >= f1 && peaki >= i1
-// .666:	peakf >= f2 && peaki >= i2 (searchback)
-// .333:	peakf >= f2 || peaki >= i2 (searchback)
-// 0: 		peakf < f2 && peaki < i2 (searchback)
+// 1: peak was found normally
+// .75: peak was found in searchback and was above f1
+// .5: peak was found in searchback and was above f2
+// .25: peak was found in searchback and was below f2
+// 0: no peak was found
 typedef struct _rtecg_spk
 {
 	rtecg_ctr x;
@@ -40,6 +41,7 @@ typedef struct _rtecg_pt
 } rtecg_pt;
 
 rtecg_pt rtecg_pt_init(void);
+rtecg_pt rtecg_pt_reset(rtecg_pt s);
 rtecg_pt rtecg_pt_process(rtecg_pt s, rtecg_int pkf, rtecg_int maxslopef, rtecg_int pki, rtecg_int maxslopei);
 rtecg_pt rtecg_pt_searchback(rtecg_pt s);
 rtecg_spk rtecg_pt_last_spkf(rtecg_pt s);

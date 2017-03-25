@@ -7,7 +7,7 @@
 #include "rtecg.h"
 #include "rtecg_filter.h"
 #include "rtecg_pantompkins.h"
-#include "testdat2.h"
+#include "testdat3.h"
 
 #define FS 200
 #define PREBURNLEN_MS 500
@@ -64,6 +64,12 @@ int main(int ac, char **av)
 		out[PKI][i] = rtecg_pk_y0(pki);
 		
 		// classification
+		if(rtecg_pk_y0(pkf) == 1){
+			printf("pkf: %d %d\n", rtecg_pk_y0(pkf), rtecg_pk_xm82(pkf));
+		}
+		if(rtecg_pk_y0(pki) == 1){
+			printf("pki: %d %d\n", rtecg_pk_y0(pki), rtecg_pk_xm82(pki));
+		}
 		pts = rtecg_pt_process(pts, rtecg_pk_y0(pkf) * rtecg_pk_xm82(pkf), rtecg_pk_maxslope(pkf), rtecg_pk_y0(pki) * rtecg_pk_xm82(pki), rtecg_pk_maxslope(pki));
 		if(pts.searchback){
 			pts = rtecg_pt_searchback(pts);

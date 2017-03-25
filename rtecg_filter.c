@@ -179,7 +179,11 @@ rtecg_int rtecg_pk_y0(rtecg_pk s)
 rtecg_int rtecg_pk_xm82(rtecg_pk s)
 {
 	if(rtecg_pk_y0(s)){
-		return s.xs[s.xm82];
+		if(s.xm82 == 0){
+			return s.xs[RTECG_PKWINLEN - 1];
+		}else{
+			return s.xs[s.xm82 - 1];
+		}
 	}else{
 		return 0;
 	}
