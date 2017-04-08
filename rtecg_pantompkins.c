@@ -160,7 +160,7 @@ rtecg_pt rtecg_pt_recordPeak(rtecg_pt s, rtecg_spk spkf, rtecg_spk spki, rtecg_i
 			cf = .75;
 		}else if(spkf.y >= f1 * 0.5){
 			cf = .5;
-		}else if(spkf.y >= 0){
+		}else if(spkf.y > 0){
 			cf = .25;
 		}else{
 			cf = 0;
@@ -170,7 +170,7 @@ rtecg_pt rtecg_pt_recordPeak(rtecg_pt s, rtecg_spk spkf, rtecg_spk spki, rtecg_i
 			ci = .75;
 		}else if(spki.y >= i1 * 0.5){
 			ci = .5;
-		}else if(spki.y >= 0){
+		}else if(spki.y > 0){
 			ci = .25;
 		}else{
 			ci = 0;

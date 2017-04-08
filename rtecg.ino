@@ -24,7 +24,7 @@ typedef struct _osctime
 } osctime;
 
 // prefix for all OSC addresses
-char *oscpfx = "/aa"; // must be 3 or fewer characters
+char *oscpfx = "/af"; // must be 3 or fewer characters
 
 // main OSC bundle
 char *oscbndl_address = "/ecg";
@@ -87,16 +87,6 @@ char *resetaddr = "/reset";
 char *flashaddr = "/flash";
 char statusbndl[] = {BUFINIT_BUNDLE, BUFINIT_TIMETAG, BUFINIT_SIZE_8BIT(24), oscpfx[0], oscpfx[1], oscpfx[2], '/', 'r', 'e', 's', 'e', 't', 0, 0, 0, ',', 't', 0, 0, BUFINIT_TIMETAG};
 
-// bundle with a single time tag that we send to the client so that they can do some statistics on the network traffic in response to pressing the flash button
-// void send_timestampbndl_start();
-// void send_timestampbndl_stop();
-// #define NTIMESTAMPBNDLS 8
-// #define TIMESTAMPBNDL_IVAL_MICROS 2000000
-// char timestampbndl[] = {'#', 'b', 'u', 'n', 'd', 'l', 'e', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 32, oscpfx[0], oscpfx[1], oscpfx[2], '/', 't', 'i', 'm', 'e', '/', 's', 'y', 'n', 'c', 0, 0, 0, ',', 'i', 't', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-// char timestampbndl_start[] = {'#', 'b', 'u', 'n', 'd', 'l', 'e', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 16, oscpfx[0], oscpfx[1], oscpfx[2], '/', 't', 'i', 'm', 'e', '/', 's', 't', 'a', 'r', 't', 0, 0};
-// char timestampbndl_stop[] = {'#', 'b', 'u', 'n', 'd', 'l', 'e', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 16, oscpfx[0], oscpfx[1], oscpfx[2], '/', 't', 'i', 'm', 'e', '/', 's', 't', 'o', 'p', 0, 0, 0};
-// int sending_timestampbndls = 0;
-
 #define NSYNCNTP 8
 #define SYNCNTP_IVAL_MICROS 2000000
 int ntp_syncing = 0;
@@ -106,20 +96,23 @@ byte packetBuffer[NTP_PACKET_SIZE]; //buffer to hold incoming & outgoing packets
 osctime theta_min = (osctime){0xFFFFFFFF, 0xFFFFFFFF};
 osctime delta_theta_min = (osctime){0, 0};
 int nsyncntp = 0;
-unsigned long lastntpsync_micros = 0;
+uint32_t lastntpsync_micros = 0;
 
 #ifdef ECG_WIFI
 // WIFI AP
-//char ssid[] = "TP-LINK_40FE00";
-//char pass[] = "78457393";
-const char ssid[] = "Bbox-04B70355";  //  your network SSID (name)
-const char pass[] = "AF6F326273676C1466C21AA45DEC43";       // your network password
+//char ssid[] = "Wifi Studio 2.4";
+//char pass[] = "rigoureux";
+char ssid[] = "TP-LINK_40FE00";
+char pass[] = "78457393";
+//const char ssid[] = "Bbox-04B70355";  //  your network SSID (name)
+//const char pass[] = "AF6F326273676C1466C21AA45DEC43";       // your network password
 
 // WiFi remote host
 WiFiUDP udp;                                // A UDP instance to let us send and receive packets over UDP
+
 //const IPAddress remote_ip(192,168,0,111);        // remote IP of your computer
-//const IPAddress peak_ip(192,168,0,111);        // remote IP of your computer
-const IPAddress peak_ip(192,168,1,6);        // remote IP of your computer
+const IPAddress peak_ip(192,168,0,111);        // remote IP of your computer
+//const IPAddress peak_ip(192,168,1,6);        // remote IP of your computer
 const unsigned int peak_port = 9999;          // remote port to receive OSC
 
 const IPAddress full_ip = peak_ip;
@@ -133,7 +126,7 @@ const int timeZone = 0;
 #endif
 
 // state of classifier etc
-unsigned long tmicros;
+uint32_t tmicros;
 rtecg_ptlp lp;
 rtecg_pthp hp;
 rtecg_ptd d;
@@ -144,8 +137,8 @@ rtecg_pt pts;
 osctime tlst[RTECG_FS * 2];
 int tptr = 0;
 // int ntimestampbndls = 0;
-// unsigned long lasttimestampbndl_micros = 0;
-unsigned long tmicros_prev, tmicros_ival;
+// uint32_t lasttimestampbndl_micros = 0;
+uint32_t tmicros_prev, tmicros_ival;
 
 /* #ifdef ECG_SERIAL */
 /* #include <SLIPEncodedSerial.h> */
@@ -158,14 +151,14 @@ const int pin_led = 2; // GPIO pin that controls the LED on the ESP-12
 const int pin_flash = 0; // GPIO pin that the flash button is wired to
 
 // used by a1 isr
-volatile unsigned long micros_ref = 0;
+volatile uint32_t micros_ref = 0;
 osctime current_date;
 volatile int int_a1 = 0;
 
 // used by flash button isr
 volatile int int_flash = 0;
-volatile unsigned long int_flash_down_micros = 0;
-volatile unsigned long int_flash_up_micros = 0;
+volatile uint32_t int_flash_down_micros = 0;
+volatile uint32_t int_flash_up_micros = 0;
 
 // endianness...
 #define OSC_BYTE_SWAP16(x)			\
@@ -250,7 +243,7 @@ volatile unsigned long int_flash_up_micros = 0;
 #define DS3234_CREG_WRITE 0x8E // write to the control register
 #define DS3234_CREG_READ 0x0E // read to the control register
 #define DS3234_SREG_WRITE 0x8F // write to the status register
-#define DS3234_SREG_READ 0x0F // read the status register 
+#define DS3234_SREG_READ 0x0F // read the status register
 
 struct DS3234_date
 {
@@ -746,16 +739,16 @@ void getNtpTime()
 				printf("%llu %llu\n", delta, theta);
 				//ttt.sec = ntoh32(ttt.sec);
 				//ttt.frac_sec = ntoh32(ttt.frac_sec);
-				//unsigned long tmicros = micros() + (1000000 - (((double)t4.frac_sec / 0xFFFFFFFF) * 1000000));
-				unsigned long ival_micros = (1000000 - (((double)t4.frac_sec / 0xFFFFFFFF) * 1000000));
+				//uint32_t tmicros = micros() + (1000000 - (((double)t4.frac_sec / 0xFFFFFFFF) * 1000000));
+				uint32_t ival_micros = (1000000 - (((double)t4.frac_sec / 0xFFFFFFFF) * 1000000));
 				Serial.print("waiting for ");
 				Serial.print((1000000 - (((double)t4.frac_sec / 0xFFFFFFFF) * 1000000)));
 				Serial.print("us, ");
 				Serial.print((1000000 - (((double)t4.frac_sec / 0xFFFFFFFF) * 1000000)) / (float)1000);
 				Serial.println("ms");
 				t4.sec++;
-				unsigned long cur_micros = micros();
-				unsigned long prev_micros = cur_micros;
+				uint32_t cur_micros = micros();
+				uint32_t prev_micros = cur_micros;
 				//while(micros() < tmicros){
 				while(cur_micros - prev_micros < ival_micros){
 				      cur_micros = micros();
@@ -997,7 +990,7 @@ void setup()
 void loop()
 {
 	// spinlock to get as close to 5ms as we can before yielding
-	unsigned long tmicros_cur = micros();
+	uint32_t tmicros_cur = micros();
 	while(tmicros_cur - tmicros_prev < tmicros_ival){
 		tmicros_cur = micros();
 	}
@@ -1082,12 +1075,13 @@ void loop()
 	pki = rtecg_pk_mark(pki, rtecg_pti_y0(mwi));
 	// classify
 	pts = rtecg_pt_process(pts, rtecg_pk_y0(pkf) * rtecg_pk_xm82(pkf), rtecg_pk_maxslope(pkf), rtecg_pk_y0(pki) * rtecg_pk_xm82(pki), rtecg_pk_maxslope(pki));
+	yield();
 	if(pts.searchback){
-		yield();
 		pts = rtecg_pt_searchback(pts);
 		if(pts.havepeak == 0){
-			pts = rtecg_pt_reset(pts);
+			//pts = rtecg_pt_reset(pts);
 		}
+		yield();
 	}
 	if(pts.havepeak){
 		if(digitalRead(pin_flash) == HIGH){
@@ -1095,7 +1089,7 @@ void loop()
 		}
 	}
 	//yield();
-
+	//Serial.print(tmicros_cur);
 	if(ecg_send_full || pts.havepeak){
 		// put data in OSC bundle
 		float tmpf;
@@ -1144,16 +1138,18 @@ void loop()
 	
 		// ship it
 #ifdef ECG_WIFI
-		if(ecg_send_full){
+		//Serial.print(" sending");
+		//if(ecg_send_full){
 			udp.beginPacket(full_ip, full_port);
 			udp.write(oscbndl, oscbndl_size);
 			udp.endPacket();
-		}
-		if(pts.havepeak){
-			udp.beginPacket(peak_ip, peak_port);
-			udp.write(oscbndl, oscbndl_size);
-			udp.endPacket();
-		}
+		// }
+		// if(pts.havepeak){
+		// 	udp.beginPacket(peak_ip, peak_port);
+		// 	udp.write(oscbndl, oscbndl_size);
+		// 	udp.endPacket();
+		// }
+		//Serial.println(" done");
 #endif // ECG_WIFI
 	}
 #ifdef ECG_SERIAL
