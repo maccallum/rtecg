@@ -24,7 +24,7 @@ typedef struct _osctime
 } osctime;
 
 // prefix for all OSC addresses
-char *oscpfx = "/af"; // must be 3 or fewer characters
+char *oscpfx = "/ab"; // must be 3 or fewer characters
 
 // main OSC bundle
 char *oscbndl_address = "/ecg";
@@ -112,6 +112,7 @@ WiFiUDP udp;                                // A UDP instance to let us send and
 
 //const IPAddress remote_ip(192,168,0,111);        // remote IP of your computer
 const IPAddress peak_ip(192,168,0,111);        // remote IP of your computer
+//const IPAddress peak_ip(192,168,74,105);        // remote IP of your computer
 //const IPAddress peak_ip(192,168,1,6);        // remote IP of your computer
 const unsigned int peak_port = 9999;          // remote port to receive OSC
 

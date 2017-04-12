@@ -36,6 +36,7 @@ typedef struct _rtecg_pt
 	rtecg_float rrsum1, rrsum2;
 	rtecg_float rravg1, rravg2;
 	rtecg_int burn_avg1, burn_avg2;
+	rtecg_int rravg2_missed_ctr;
 	rtecg_int havefirstpeak;
 	rtecg_int searchback;
 } rtecg_pt;
