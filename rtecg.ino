@@ -1091,6 +1091,14 @@ void loop()
 	}
 	//yield();
 	//Serial.print(tmicros_cur);
+	if (WiFi.status() != WL_CONNECTED) {
+		yield();
+		WiFi.begin(ssid, pass);
+		int status = WiFi.waitForConnectResult();
+	        while(status != WL_CONNECTED){
+			delay(250);
+		}
+	}
 	if(ecg_send_full || pts.havepeak){
 		// put data in OSC bundle
 		float tmpf;
