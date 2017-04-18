@@ -6,6 +6,7 @@ extern "C" {
 #endif
 
 #include "rtecg.h"
+#include <stddef.h>
 
 // the confidence value is crude at this point:
 // 1: peak was found normally
@@ -36,15 +37,15 @@ typedef struct _rtecg_pt
 	rtecg_float rrsum1, rrsum2;
 	rtecg_float rravg1, rravg2;
 	rtecg_int burn_avg1, burn_avg2;
-	//rtecg_int rravg2_missed_ctr;
+	rtecg_int rravg2_missed_ctr;
 	rtecg_int havefirstpeak;
 	rtecg_int searchback;
 } rtecg_pt;
 
 rtecg_pt rtecg_pt_init(void);
 rtecg_pt rtecg_pt_reset(rtecg_pt s);
-rtecg_pt rtecg_pt_process(rtecg_pt s, rtecg_int pkf, rtecg_int maxslopef, rtecg_int pki, rtecg_int maxslopei);
-rtecg_pt rtecg_pt_searchback(rtecg_pt s);
+rtecg_pt rtecg_pt_process(rtecg_pt s, rtecg_int pkf, rtecg_int maxslopef, rtecg_int pki, rtecg_int maxslopei, char *buf, size_t buflen, int bufptr);
+rtecg_pt rtecg_pt_searchback(rtecg_pt s, char *buf, size_t buflen, int bufptr);
 rtecg_spk rtecg_pt_last_spkf(rtecg_pt s);
 rtecg_spk rtecg_pt_last_spki(rtecg_pt s);
 

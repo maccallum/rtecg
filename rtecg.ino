@@ -24,7 +24,7 @@ typedef struct _osctime
 } osctime;
 
 // prefix for all OSC addresses
-char *oscpfx = "/ae"; // must be 3 or fewer characters
+char *oscpfx = "/aa"; // must be 3 or fewer characters
 
 // main OSC bundle
 char *oscbndl_address = "/ecg";
@@ -100,10 +100,10 @@ uint32_t lastntpsync_micros = 0;
 
 #ifdef ECG_WIFI
 // WIFI AP
-char ssid[] = "Wifi Studio 2.4";
-char pass[] = "rigoureux";
-//char ssid[] = "TP-LINK_40FE00";
-//char pass[] = "78457393";
+//char ssid[] = "Wifi Studio 2.4";
+//char pass[] = "rigoureux";
+char ssid[] = "TP-LINK_40FE00";
+char pass[] = "78457393";
 //const char ssid[] = "Bbox-04B70355";  //  your network SSID (name)
 //const char pass[] = "AF6F326273676C1466C21AA45DEC43";       // your network password
 
@@ -111,8 +111,8 @@ char pass[] = "rigoureux";
 WiFiUDP udp;                                // A UDP instance to let us send and receive packets over UDP
 
 //const IPAddress remote_ip(192,168,0,111);        // remote IP of your computer
-//const IPAddress peak_ip(192,168,0,111);        // remote IP of your computer
-const IPAddress peak_ip(192,168,74,105);        // remote IP of your computer
+const IPAddress peak_ip(192,168,0,111);        // remote IP of your computer
+//const IPAddress peak_ip(192,168,74,105);        // remote IP of your computer
 //const IPAddress peak_ip(192,168,1,6);        // remote IP of your computer
 const unsigned int peak_port = 9999;          // remote port to receive OSC
 
@@ -1065,7 +1065,6 @@ void loop()
 	if(nsyncntp && micros() - lastntpsync_micros >= 2000000){
 		ntp_sync();
 	}
-	
 	// filter ECG signal
         lp = rtecg_ptlp_hx0(lp, a0);
 	hp = rtecg_pthp_hx0(hp, rtecg_ptlp_y0(lp));
@@ -1075,13 +1074,30 @@ void loop()
 	pkf = rtecg_pk_mark(pkf, rtecg_pthp_y0(hp));
 	pki = rtecg_pk_mark(pki, rtecg_pti_y0(mwi));
 	// classify
-	pts = rtecg_pt_process(pts, rtecg_pk_y0(pkf) * rtecg_pk_xm82(pkf), rtecg_pk_maxslope(pkf), rtecg_pk_y0(pki) * rtecg_pk_xm82(pki), rtecg_pk_maxslope(pki));
+	// if(rtecg_pk_y0(pkf) || rtecg_pk_y0(pki)){
+	// 	Serial.printf("++++++++++CLASSIFY ENTER\n");
+	// 	Serial.printf("ctr: %u, pkf: %d, pki: %d\n", pts.ctr + 1, rtecg_pk_y0(pkf), rtecg_pk_y0(pki));
+	// }
+	int buflen = 1;//1200;
+	char buf[buflen];
+	buf[0] = 0;
+	pts = rtecg_pt_process(pts, rtecg_pk_y0(pkf) * rtecg_pk_xm82(pkf), rtecg_pk_maxslope(pkf), rtecg_pk_y0(pki) * rtecg_pk_xm82(pki), rtecg_pk_maxslope(pki), buf, buflen, 0);
+	// if(rtecg_pk_y0(pkf) || rtecg_pk_y0(pki)){
+	// 	Serial.print(buf);
+	// 	Serial.printf("-----------CLASSIFY EXIT\n");
+	// 	Serial.printf("%s\n", pts.havepeak ? "FOUND PEAK": "NO PEAK");
+	// }
 	yield();
 	if(pts.searchback){
-		pts = rtecg_pt_searchback(pts);
-		if(pts.havepeak == 0){
-			//pts = rtecg_pt_reset(pts);
-		}
+	       	//Serial.printf("++++++++++SEARCHBACK ENTER\n");
+		buf[0] = 0;
+		pts = rtecg_pt_searchback(pts, buf, buflen, 0);
+		// Serial.print(buf);
+		// Serial.printf("-----------SEARCHBACK EXIT\n");
+		// if(pts.havepeak == 0){
+		// 	Serial.printf("**************************************************\nNO PEAK FOUND DURING SEARCHBACK!!!\n**************************************************\n");
+		// 	//pts = rtecg_pt_reset(pts);
+		// }
 		yield();
 	}
 	if(pts.havepeak){
@@ -1089,6 +1105,7 @@ void loop()
 			digitalWrite(pin_led, LOW);		
 		}
 	}
+	//Serial.printf("-----------LOOP EXIT\n");
 	//yield();
 	//Serial.print(tmicros_cur);
 	if (WiFi.status() != WL_CONNECTED) {

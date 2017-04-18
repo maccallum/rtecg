@@ -70,9 +70,10 @@ int main(int ac, char **av)
 		if(rtecg_pk_y0(pki) == 1){
 			printf("pki: %d %d\n", rtecg_pk_y0(pki), rtecg_pk_xm82(pki));
 		}
-		pts = rtecg_pt_process(pts, rtecg_pk_y0(pkf) * rtecg_pk_xm82(pkf), rtecg_pk_maxslope(pkf), rtecg_pk_y0(pki) * rtecg_pk_xm82(pki), rtecg_pk_maxslope(pki));
+		char buf[512];
+		pts = rtecg_pt_process(pts, rtecg_pk_y0(pkf) * rtecg_pk_xm82(pkf), rtecg_pk_maxslope(pkf), rtecg_pk_y0(pki) * rtecg_pk_xm82(pki), rtecg_pk_maxslope(pki), buf, 512, 0);
 		if(pts.searchback){
-			pts = rtecg_pt_searchback(pts);
+			pts = rtecg_pt_searchback(pts, buf, 512, 0);
 		}
 	  	if(pts.havepeak){
 			out[SPKF][i - rtecg_pt_last_spkf(pts).x] = 1;
