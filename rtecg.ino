@@ -24,7 +24,7 @@ typedef struct _osctime
 } osctime;
 
 // prefix for all OSC addresses
-char *oscpfx = "/aa"; // must be 3 or fewer characters
+char *oscpfx = "/ad"; // must be 3 or fewer characters
 
 // main OSC bundle
 char *oscbndl_address = "/ecg";
