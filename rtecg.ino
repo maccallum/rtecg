@@ -24,7 +24,7 @@ typedef struct _osctime
 } osctime;
 
 // prefix for all OSC addresses
-char *oscpfx = "/ad"; // must be 3 or fewer characters
+char *oscpfx = "/ae"; // must be 3 or fewer characters
 
 // main OSC bundle
 char *oscbndl_address = "/ecg";
@@ -100,10 +100,10 @@ uint32_t lastntpsync_micros = 0;
 
 #ifdef ECG_WIFI
 // WIFI AP
-//char ssid[] = "Wifi Studio 2.4";
-//char pass[] = "rigoureux";
 char ssid[] = "TP-LINK_40FE00";
 char pass[] = "78457393";
+//char ssid[] = "guests";
+//char pass[] = "Wilder1435";
 //const char ssid[] = "Bbox-04B70355";  //  your network SSID (name)
 //const char pass[] = "AF6F326273676C1466C21AA45DEC43";       // your network password
 
