@@ -9,15 +9,15 @@
   },
   "DVTSourceControlWorkspaceBlueprintIdentifierKey" : "53BD3A09-5BF4-4807-AC22-5F9B762D08CE",
   "DVTSourceControlWorkspaceBlueprintWorkingCopyPathsKey" : {
-    "20DC6287C6D318433B681296E0BF364C4882CD47" : "..\/CNMAT\/CNMAT\/max-sdk",
+    "20DC6287C6D318433B681296E0BF364C4882CD47" : "rtecg\/Applications\/lib\/max-sdk\/",
     "F67B3D70CB011CB2F96C192FCEA6B48A52DF98E5" : "rtecg\/"
   },
   "DVTSourceControlWorkspaceBlueprintNameKey" : "o.rtecg",
   "DVTSourceControlWorkspaceBlueprintVersion" : 204,
-  "DVTSourceControlWorkspaceBlueprintRelativePathToProjectKey" : "o.rtecg.xcodeproj",
+  "DVTSourceControlWorkspaceBlueprintRelativePathToProjectKey" : "Applications\/Max\/o.rtecg.xcodeproj",
   "DVTSourceControlWorkspaceBlueprintRemoteRepositoriesKey" : [
     {
-      "DVTSourceControlWorkspaceBlueprintRemoteRepositoryURLKey" : "https:\/\/github.com\/Cycling74\/max-sdk",
+      "DVTSourceControlWorkspaceBlueprintRemoteRepositoryURLKey" : "https:\/\/github.com\/cycling74\/max-sdk.git",
       "DVTSourceControlWorkspaceBlueprintRemoteRepositorySystemKey" : "com.apple.dt.Xcode.sourcecontrol.Git",
       "DVTSourceControlWorkspaceBlueprintRemoteRepositoryIdentifierKey" : "20DC6287C6D318433B681296E0BF364C4882CD47"
     },

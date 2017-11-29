@@ -7,22 +7,22 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		52048CEA1FC2B5DF00FBBBAB /* commonsyms.c in Sources */ = {isa = PBXBuildFile; fileRef = 52CEF59416375BFB0016EC39 /* commonsyms.c */; };
 		52048CED1FC2B5DF00FBBBAB /* Carbon.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 08EA7FFBFE8413EDC02AAC07 /* Carbon.framework */; };
 		52048CF51FC2B5F500FBBBAB /* o.rtecg.c in Sources */ = {isa = PBXBuildFile; fileRef = 52048CF41FC2B5F500FBBBAB /* o.rtecg.c */; };
-		52048CF71FC2B94900FBBBAB /* MaxAPI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 52048CF61FC2B94900FBBBAB /* MaxAPI.framework */; };
-		52048CFA1FC2BF2F00FBBBAB /* rtecg_filter.c in Sources */ = {isa = PBXBuildFile; fileRef = 52048CF81FC2BF2F00FBBBAB /* rtecg_filter.c */; };
-		52048CFB1FC2BF2F00FBBBAB /* rtecg_pantompkins.c in Sources */ = {isa = PBXBuildFile; fileRef = 52048CF91FC2BF2F00FBBBAB /* rtecg_pantompkins.c */; };
+		52DD573C1FCEAA2D007C45BC /* rtecg_filter.c in Sources */ = {isa = PBXBuildFile; fileRef = 52DD573A1FCEAA2D007C45BC /* rtecg_filter.c */; };
+		52DD573D1FCEAA2D007C45BC /* rtecg_pantompkins.c in Sources */ = {isa = PBXBuildFile; fileRef = 52DD573B1FCEAA2D007C45BC /* rtecg_pantompkins.c */; };
+		52DD573F1FCEB2EF007C45BC /* commonsyms.c in Sources */ = {isa = PBXBuildFile; fileRef = 52DD573E1FCEB2EF007C45BC /* commonsyms.c */; };
+		52DD57411FCEB2FF007C45BC /* MaxAPI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 52DD57401FCEB2FF007C45BC /* MaxAPI.framework */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		08EA7FFBFE8413EDC02AAC07 /* Carbon.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Carbon.framework; path = /System/Library/Frameworks/Carbon.framework; sourceTree = "<absolute>"; };
 		52048CF31FC2B5DF00FBBBAB /* o.rtecg.mxo */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = o.rtecg.mxo; sourceTree = BUILT_PRODUCTS_DIR; };
 		52048CF41FC2B5F500FBBBAB /* o.rtecg.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = o.rtecg.c; sourceTree = "<group>"; };
-		52048CF61FC2B94900FBBBAB /* MaxAPI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = MaxAPI.framework; path = "../../CNMAT/CNMAT/max-sdk/source/c74support/max-includes/MaxAPI.framework"; sourceTree = "<group>"; };
-		52048CF81FC2BF2F00FBBBAB /* rtecg_filter.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = rtecg_filter.c; sourceTree = "<group>"; };
-		52048CF91FC2BF2F00FBBBAB /* rtecg_pantompkins.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = rtecg_pantompkins.c; sourceTree = "<group>"; };
-		52CEF59416375BFB0016EC39 /* commonsyms.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = commonsyms.c; path = "../../CNMAT/CNMAT/max-sdk/source/c74support/max-includes/common/commonsyms.c"; sourceTree = "<group>"; };
+		52DD573A1FCEAA2D007C45BC /* rtecg_filter.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = rtecg_filter.c; path = ../../rtecg_filter.c; sourceTree = "<group>"; };
+		52DD573B1FCEAA2D007C45BC /* rtecg_pantompkins.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = rtecg_pantompkins.c; path = ../../rtecg_pantompkins.c; sourceTree = "<group>"; };
+		52DD573E1FCEB2EF007C45BC /* commonsyms.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = commonsyms.c; path = "../lib/max-sdk/source/c74support/max-includes/common/commonsyms.c"; sourceTree = "<group>"; };
+		52DD57401FCEB2FF007C45BC /* MaxAPI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = MaxAPI.framework; path = "../lib/max-sdk/source/c74support/max-includes/MaxAPI.framework"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -30,7 +30,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				52048CF71FC2B94900FBBBAB /* MaxAPI.framework in Frameworks */,
+				52DD57411FCEB2FF007C45BC /* MaxAPI.framework in Frameworks */,
 				52048CED1FC2B5DF00FBBBAB /* Carbon.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -42,9 +42,8 @@
 			isa = PBXGroup;
 			children = (
 				52048CF41FC2B5F500FBBBAB /* o.rtecg.c */,
-				52048CF81FC2BF2F00FBBBAB /* rtecg_filter.c */,
-				52048CF91FC2BF2F00FBBBAB /* rtecg_pantompkins.c */,
-				52CEF59416375BFB0016EC39 /* commonsyms.c */,
+				52DD573A1FCEAA2D007C45BC /* rtecg_filter.c */,
+				52DD573B1FCEAA2D007C45BC /* rtecg_pantompkins.c */,
 				52C839E1167A5BB8000AA688 /* Other Sources */,
 				089C1671FE841209C02AAC07 /* External Frameworks and Libraries */,
 				19C28FB4FE9D528D11CA2CBB /* Products */,
@@ -55,7 +54,7 @@
 		089C1671FE841209C02AAC07 /* External Frameworks and Libraries */ = {
 			isa = PBXGroup;
 			children = (
-				52048CF61FC2B94900FBBBAB /* MaxAPI.framework */,
+				52DD57401FCEB2FF007C45BC /* MaxAPI.framework */,
 				08EA7FFBFE8413EDC02AAC07 /* Carbon.framework */,
 			);
 			name = "External Frameworks and Libraries";
@@ -72,6 +71,7 @@
 		52C839E1167A5BB8000AA688 /* Other Sources */ = {
 			isa = PBXGroup;
 			children = (
+				52DD573E1FCEB2EF007C45BC /* commonsyms.c */,
 			);
 			name = "Other Sources";
 			sourceTree = "<group>";
@@ -150,10 +150,10 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				52048CFB1FC2BF2F00FBBBAB /* rtecg_pantompkins.c in Sources */,
 				52048CF51FC2B5F500FBBBAB /* o.rtecg.c in Sources */,
-				52048CFA1FC2BF2F00FBBBAB /* rtecg_filter.c in Sources */,
-				52048CEA1FC2B5DF00FBBBAB /* commonsyms.c in Sources */,
+				52DD573D1FCEAA2D007C45BC /* rtecg_pantompkins.c in Sources */,
+				52DD573F1FCEB2EF007C45BC /* commonsyms.c in Sources */,
+				52DD573C1FCEAA2D007C45BC /* rtecg_filter.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -307,7 +307,7 @@
 				COPY_PHASE_STRIP = NO;
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(inherited)",
-					"\"$(SRCROOT)/../../CNMAT/CNMAT/max-sdk/source/c74support/max-includes\"",
+					"\"$(SRCROOT)/../lib/max-sdk/source/c74support/max-includes\"",
 				);
 				FRAMEWORK_SEARCH_PATHS_QUOTED_FOR_TARGET_1 = "\"$(SRCROOT)/../../max6-sdk/c74support/max-includes\"";
 				GCC_ALTIVEC_EXTENSIONS = YES;
@@ -320,24 +320,24 @@
 				GCC_PRECOMPILE_PREFIX_HEADER = YES;
 				GCC_PREFIX_HEADER = "/Users/john/Development/CNMAT/CNMAT/max-sdk/source/c74support/max-includes/macho-prefix.pch";
 				HEADER_SEARCH_PATHS = (
-					"\"$(SRCROOT)/../../CNMAT/CNMAT/max-sdk/source/c74support/max-includes\"",
-					"\"$(SRCROOT)/../../CNMAT/CNMAT/libo\"",
-					"\"$(SRCROOT)/../../CNMAT/CNMAT/libomax\"",
+					"\"$(SRCROOT)/../lib/max-sdk/source/c74support/max-includes\"",
+					"\"$(SRCROOT)/../lib/libo\"",
+					"\"$(SRCROOT)/../lib/libomax\"",
 				);
 				INFOPLIST_FILE = "o.rtecg-Info.plist";
 				INSTALL_PATH = "";
 				LIBRARY_SEARCH_PATHS = (
-					"\"$(SRCROOT)/../../CNMAT/CNMAT/libo\"",
-					"\"$(SRCROOT)/../../CNMAT/CNMAT/libomax\"",
-					"\"$(SRCROOT)/../../CNMAT/CNMAT/max-sdk/source/c74support/max-includes\"",
+					"\"$(SRCROOT)/../lib/libo\"",
+					"\"$(SRCROOT)/../lib/libomax\"",
+					"\"$(SRCROOT)/../lib/max-sdk/source/c74support/max-includes\"",
 				);
 				LIBRARY_SEARCH_PATHS_QUOTED_FOR_TARGET_1 = "\"$(SRCROOT)/../../libo\"";
 				LIBRARY_SEARCH_PATHS_QUOTED_FOR_TARGET_2 = "\"$(SRCROOT)/../../libomax\"";
 				MACOSX_DEPLOYMENT_TARGET = 10.5;
 				OBJROOT = "$(inherited)";
-				OTHER_LDFLAGS = "\"$(SRCROOT)/../../CNMAT/CNMAT/max-sdk/source/c74support/max-includes/c74_linker_flags.txt\"";
+				OTHER_LDFLAGS = "";
 				PREBINDING = YES;
-				PRELINK_LIBS = "\"$(SRCROOT)/../../CNMAT/CNMAT/libo/libo.a\" \"$(SRCROOT)/../../CNMAT/CNMAT/libomax/libomax.a\"";
+				PRELINK_LIBS = "\"$(SRCROOT)/../lib/libo/libo.a\" \"$(SRCROOT)/../lib/libomax/libomax.a\"";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = macosx;
 				SHARED_PRECOMPS_DIR = "$(inherited)";
@@ -359,7 +359,7 @@
 				DSTROOT = "$(PROJECT_DIR)";
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(inherited)",
-					"\"$(SRCROOT)/../../CNMAT/CNMAT/max-sdk/source/c74support/max-includes\"",
+					"\"$(SRCROOT)/../lib/max-sdk/source/c74support/max-includes\"",
 				);
 				FRAMEWORK_SEARCH_PATHS_QUOTED_FOR_TARGET_1 = "\"$(SRCROOT)/../../max6-sdk/c74support/max-includes\"";
 				GCC_ALTIVEC_EXTENSIONS = YES;
@@ -370,24 +370,24 @@
 				GCC_PRECOMPILE_PREFIX_HEADER = YES;
 				GCC_PREFIX_HEADER = "/Users/john/Development/CNMAT/CNMAT/max-sdk/source/c74support/max-includes/macho-prefix.pch";
 				HEADER_SEARCH_PATHS = (
-					"\"$(SRCROOT)/../../CNMAT/CNMAT/max-sdk/source/c74support/max-includes\"",
-					"\"$(SRCROOT)/../../CNMAT/CNMAT/libo\"",
-					"\"$(SRCROOT)/../../CNMAT/CNMAT/libomax\"",
+					"\"$(SRCROOT)/../lib/max-sdk/source/c74support/max-includes\"",
+					"\"$(SRCROOT)/../lib/libo\"",
+					"\"$(SRCROOT)/../lib/libomax\"",
 				);
 				INFOPLIST_FILE = "o.rtecg-Info.plist";
 				INSTALL_PATH = "";
 				LIBRARY_SEARCH_PATHS = (
-					"\"$(SRCROOT)/../../CNMAT/CNMAT/libo\"",
-					"\"$(SRCROOT)/../../CNMAT/CNMAT/libomax\"",
-					"\"$(SRCROOT)/../../CNMAT/CNMAT/max-sdk/source/c74support/max-includes\"",
+					"\"$(SRCROOT)/../lib/libo\"",
+					"\"$(SRCROOT)/../lib/libomax\"",
+					"\"$(SRCROOT)/../lib/max-sdk/source/c74support/max-includes\"",
 				);
 				LIBRARY_SEARCH_PATHS_QUOTED_FOR_TARGET_1 = "\"$(SRCROOT)/../../libo\"";
 				LIBRARY_SEARCH_PATHS_QUOTED_FOR_TARGET_2 = "\"$(SRCROOT)/../../libomax\"";
 				MACOSX_DEPLOYMENT_TARGET = 10.5;
 				OBJROOT = "$(inherited)";
-				OTHER_LDFLAGS = "\"$(SRCROOT)/../../CNMAT/CNMAT/max-sdk/source/c74support/max-includes/c74_linker_flags.txt\"";
+				OTHER_LDFLAGS = "";
 				PREBINDING = YES;
-				PRELINK_LIBS = "\"$(SRCROOT)/../../CNMAT/CNMAT/libo/libo.a\" \"$(SRCROOT)/../../CNMAT/CNMAT/libomax/libomax.a\"";
+				PRELINK_LIBS = "\"$(SRCROOT)/../lib/libo/libo.a\" \"$(SRCROOT)/../lib/libomax/libomax.a\"";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = macosx;
 				SHARED_PRECOMPS_DIR = "$(inherited)";

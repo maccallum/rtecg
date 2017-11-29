@@ -17,7 +17,6 @@
 #include "ext_obex_util.h"
 #include "osc.h"
 #include "osc_mem.h"
-#include "o.h"
 #include "omax_util.h"
 #include "omax_doc.h"
 #include "omax_dict.h"
@@ -43,9 +42,9 @@ typedef struct _oO{
 void *oO_class;
 
 
-void oO_fullPacket(t_oO *x, t_symbol *msg, int argc, t_atom *argv)
+void oO_fullPacket(t_oO *x, long len, long _ptr)
 {
-	OMAX_UTIL_GET_LEN_AND_PTR;
+	char *ptr = (char *)_ptr;
 	t_osc_msg_ar_s *msgs_ecg_s = osc_bundle_s_lookupAddress(len, ptr, "/ecg", 1);
 	if(osc_message_array_s_getLen(msgs_ecg_s) == 0){
 		return;
@@ -107,7 +106,7 @@ int main(void)
 {
 	t_class *c = class_new("o.rtecg", (method)oO_new, (method)oO_free, sizeof(t_oO), 0L, A_GIMME, 0);
 	//class_addmethod(c, (method)oO_fullPacket, "FullPacket", A_LONG, A_LONG, 0);
-	class_addmethod(c, (method)oO_fullPacket, "FullPacket", A_GIMME, 0);
+	class_addmethod(c, (method)oO_fullPacket, "FullPacket", A_LONG, A_LONG, 0);
 	class_addmethod(c, (method)oO_assist, "assist", A_CANT, 0);
 	class_addmethod(c, (method)oO_doc, "doc", 0);
 	//class_addmethod(c, (method)oO_bang, "bang", 0);
