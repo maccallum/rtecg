@@ -2,13 +2,14 @@
 	"patcher" : 	{
 		"fileversion" : 1,
 		"appversion" : 		{
-			"major" : 7,
-			"minor" : 3,
-			"revision" : 4,
+			"major" : 8,
+			"minor" : 0,
+			"revision" : 0,
 			"architecture" : "x64",
 			"modernui" : 1
 		}
 ,
+		"classnamespace" : "box",
 		"rect" : [ 641.0, 79.0, 1245.0, 382.0 ],
 		"bglocked" : 0,
 		"openinpresentation" : 0,
@@ -56,8 +57,8 @@
 					"numinlets" : 1,
 					"numoutlets" : 1,
 					"outlettype" : [ "bang" ],
-					"patching_rect" : [ 112.0, 82.0, 24.0, 24.0 ],
-					"style" : ""
+					"parameter_enable" : 0,
+					"patching_rect" : [ 112.0, 82.0, 24.0, 24.0 ]
 				}
 
 			}
@@ -68,7 +69,6 @@
 					"numinlets" : 1,
 					"numoutlets" : 0,
 					"patching_rect" : [ 286.5, 118.0, 144.0, 20.0 ],
-					"style" : "",
 					"text" : "udpsend localhost 40000"
 				}
 
@@ -96,8 +96,7 @@
 					"maxclass" : "outlet",
 					"numinlets" : 1,
 					"numoutlets" : 0,
-					"patching_rect" : [ 144.0, 308.0, 30.0, 30.0 ],
-					"style" : ""
+					"patching_rect" : [ 144.0, 308.0, 30.0, 30.0 ]
 				}
 
 			}
@@ -109,7 +108,6 @@
 					"numoutlets" : 1,
 					"outlettype" : [ "FullPacket" ],
 					"patching_rect" : [ 144.0, 156.0, 92.0, 20.0 ],
-					"style" : "",
 					"text" : "o.rtecg.lncache"
 				}
 
@@ -156,7 +154,6 @@
 					"numoutlets" : 1,
 					"outlettype" : [ "" ],
 					"patching_rect" : [ 144.0, 82.0, 126.0, 20.0 ],
-					"style" : "",
 					"text" : "o.rtecg.timetag.arrival"
 				}
 
@@ -169,7 +166,6 @@
 					"numoutlets" : 1,
 					"outlettype" : [ "FullPacket" ],
 					"patching_rect" : [ 144.0, 118.0, 69.0, 20.0 ],
-					"style" : "",
 					"text" : "o.rtecg.self"
 				}
 
@@ -182,7 +178,6 @@
 					"numoutlets" : 1,
 					"outlettype" : [ "" ],
 					"patching_rect" : [ 144.0, 41.0, 131.0, 20.0 ],
-					"style" : "",
 					"text" : "udpreceive #1 CNMAT"
 				}
 

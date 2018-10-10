@@ -1,7 +1,9 @@
-#include <ESP8266WiFi.h>
+#include <WiFi.h>
 #include <WiFiUdp.h>
-#include <SPI.h>
-#include <TimeLib.h>
+//#include <SPI.h>
+#include <Wire.h>
+#include <RTClib.h>
+#include <ArduinoOTA.h>
 #include "rtecg.h"
 #include "rtecg_filter.h"
 #include "rtecg_pantompkins.h"
@@ -18,24 +20,38 @@ typedef struct _osctime
 	uint32_t frac_sec;
 } osctime;
 
+const char *osc_pfxs[16] = {"/a", "/b", "/c", "/d", "/e", "/f", "/g", "/h", "/i", "/j", "/k", "/l", "/m", "/n", "/o", "/p"};
+const char *get_osc_pfx(uint8_t id)
+{
+	if(id > 15){
+		id = 0;
+	}
+	return osc_pfxs[id];
+}
+
+uint8_t id = 0;
+
 #ifdef ECG_WIFI
 // WIFI AP
-char ssid[] = "TP-LINK_40FE00";
-char pass[] = "78457393";
-//char ssid[] = "CLOUDnet";
-//char pass[] = "draadloos";
-const IPAddress peak_ip(192,168,0,200);
-//const IPAddress peak_ip(192,168,2,233);
+//const char *ssid = "TP-LINK_40FE00";
+//const char *pass = "78457393";
+const char *ssid = "aether";
+const char *pass = "industrialmusic";
+//const char *ssid = "CLOUDnet";
+//const char *pass = "draadloos";
+//const char *peak_ip = "192.168.0.200";
+//const char *peak_ip = "192.168.0.15";
+IPAddress peak_ip(192, 168, 0, 15);
 const unsigned int peak_port = 9999;
 
-const IPAddress full_ip = peak_ip;
+IPAddress full_ip(192, 168, 0, 15);
 const unsigned int full_port = 9998;          // remote port to receive OSC
 
-const IPAddress remote_ip = peak_ip;
+IPAddress remote_ip(192, 168, 0, 15);
 const unsigned int remote_port = peak_port;
 
 // prefix for all OSC addresses
-char *oscpfx = "/ad"; // must be 3 or fewer characters
+char *oscpfx = "/ad"; // must be 3 or fewer const uint8_tacters
 
 // main OSC bundle
 char *oscbndl_address = "/ecg";
@@ -136,10 +152,14 @@ uint32_t tmicros_prev, tmicros_ival;
 /* SLIPEncodedSerial SLIPSerial(Serial); */
 /* #endif // ECG_SERIAL */
 
-const int pin_ss = 5; // slave select pin
-const int pin_sqw = 4; // square wave pin
-const int pin_led = 2; // GPIO pin that controls the LED on the ESP-12
-const int pin_flash = 0; // GPIO pin that the flash button is wired to
+//const int pin_ss = 5; // slave select pin
+const int pin_sqw = 34; // square wave pin
+const int pin_led = 13; // GPIO pin that controls the LED 
+//const int pin_flash = pin_led; // GPIO pin that the flash button is wired to
+const int pin_id1 = 39;
+const int pin_id2 = 36;
+const int pin_id3 = 4;
+//const int pin_id4 = 0;
 
 // used by a1 isr
 volatile uint32_t micros_ref = 0;
@@ -217,146 +237,143 @@ volatile uint32_t int_flash_up_micros = 0;
 
 #endif
 
-// control register masks
-#define DS3234_A1IE 0x1
-#define DS3234_A2IE 0x2
-#define DS3234_INTCN 0x4
-#define DS3234_RS1 0x8
-#define DS3234_RS2 0x10
-#define DS3234_CONV 0x20
-#define DS3234_BBSQW 0x40
-#define DS3234_EOSC 0x80
+RTC_DS3231 rtc;
 
-// status register masks
-#define DS3234_A1F 0x1
-#define DS3234_A2F 0x2
+// // control register masks
+// #define DS3234_A1IE 0x1
+// #define DS3234_A2IE 0x2
+// #define DS3234_INTCN 0x4
+// #define DS3234_RS1 0x8
+// #define DS3234_RS2 0x10
+// #define DS3234_CONV 0x20
+// #define DS3234_BBSQW 0x40
+// #define DS3234_EOSC 0x80
 
-#define DS3234_CREG_WRITE 0x8E // write to the control register
-#define DS3234_CREG_READ 0x0E // read to the control register
-#define DS3234_SREG_WRITE 0x8F // write to the status register
-#define DS3234_SREG_READ 0x0F // read the status register
+// // status register masks
+// #define DS3234_A1F 0x1
+// #define DS3234_A2F 0x2
 
-struct DS3234_date
-{
-	uint8_t sec, min, hour, wday, mday, mon_plus_cent, year;
-};
+// #define DS3234_CREG_WRITE 0x8E // write to the control register
+// #define DS3234_CREG_READ 0x0E // read to the control register
+// #define DS3234_SREG_WRITE 0x8F // write to the status register
+// #define DS3234_SREG_READ 0x0F // read the status register
 
-// utility functions for communicating with the DS3234
-void DS3234_set_reg(const uint8_t addr, const uint8_t val)
-{
-	digitalWrite(pin_ss, LOW);
-	SPI.transfer(addr);
-	SPI.transfer(val);
-	digitalWrite(pin_ss, HIGH);
-}
+// struct DS3234_date
+// {
+// 	uint8_t sec, min, hour, wday, mday, mon_plus_cent, year;
+// };
 
-uint8_t DS3234_get_reg(const uint8_t addr)
-{
-	uint8_t rv;
+// // utility functions for communicating with the DS3234
+// void DS3234_set_reg(const uint8_t addr, const uint8_t val)
+// {
+// 	digitalWrite(pin_ss, LOW);
+// 	SPI.transfer(addr);
+// 	SPI.transfer(val);
+// 	digitalWrite(pin_ss, HIGH);
+// }
 
-	digitalWrite(pin_ss, LOW);
-	SPI.transfer(addr);
-	rv = SPI.transfer(0x00);
-	digitalWrite(pin_ss, HIGH);
-	return rv;
-}
+// uint8_t DS3234_get_reg(const uint8_t addr)
+// {
+// 	uint8_t rv;
 
-struct DS3234_date DS3234_get_date()
-{
-	struct DS3234_date d;
-	char *dc = (char *)(&d);
-	for(int i = 0; i < 7; i++){
-		digitalWrite(pin_ss, LOW);
-		SPI.transfer(i);
-		dc[i] = SPI.transfer(0);
-		digitalWrite(pin_ss, HIGH);
-	}
-	return d;
-}
+// 	digitalWrite(pin_ss, LOW);
+// 	SPI.transfer(addr);
+// 	rv = SPI.transfer(0x00);
+// 	digitalWrite(pin_ss, HIGH);
+// 	return rv;
+// }
 
-void DS3234_set_date(struct DS3234_date d)
-{
-	char *dc = (char *)(&d);	
-	for(int i = 0; i < 7; i++){
-		digitalWrite(pin_ss, LOW);
-		SPI.transfer(i + 0x80);
-		SPI.transfer(dc[i]);
-		digitalWrite(pin_ss, HIGH);
-	}
-}
+// struct DS3234_date DS3234_get_date()
+// {
+// 	struct DS3234_date d;
+// 	char *dc = (char *)(&d);
+// 	for(int i = 0; i < 7; i++){
+// 		digitalWrite(pin_ss, LOW);
+// 		SPI.transfer(i);
+// 		dc[i] = SPI.transfer(0);
+// 		digitalWrite(pin_ss, HIGH);
+// 	}
+// 	return d;
+// }
 
-uint8_t dectobcd(const uint8_t val)
-{
-	return ((val / 10 * 16) + (val % 10));
-}
+// void DS3234_set_date(struct DS3234_date d)
+// {
+// 	char *dc = (char *)(&d);	
+// 	for(int i = 0; i < 7; i++){
+// 		digitalWrite(pin_ss, LOW);
+// 		SPI.transfer(i + 0x80);
+// 		SPI.transfer(dc[i]);
+// 		digitalWrite(pin_ss, HIGH);
+// 	}
+// }
 
-uint8_t bcdtodec(const uint8_t val)
-{
-	return ((val / 16 * 10) + (val % 16));
-}
+// uint8_t dectobcd(const uint8_t val)
+// {
+// 	return ((val / 10 * 16) + (val % 10));
+// }
 
-struct DS3234_date make_DS3234_date(uint8_t sec,
-				    uint8_t min,
-				    uint8_t hour,
-				    uint8_t wday,
-				    uint8_t mday,
-				    uint8_t mon,
-				    uint16_t year)
-{
-	int century = year >= 2000 ? 1 : 0;
-	struct DS3234_date d = (struct DS3234_date){
-		dectobcd(sec),
-		dectobcd(min),
-		dectobcd(hour),
-		dectobcd(wday),
-		dectobcd(mday),
-		//mday,
-		dectobcd(mon) + century * 0x80,
-		dectobcd((uint8_t)(year - (1900 + (century * 100))))
-	};
-	return d;
-}
+// uint8_t bcdtodec(const uint8_t val)
+// {
+// 	return ((val / 16 * 10) + (val % 16));
+// }
 
-void DS3234_date_to_string(struct DS3234_date d, long buflen, char *buf)
+// struct DS3234_date make_DS3234_date(uint8_t sec,
+// 				    uint8_t min,
+// 				    uint8_t hour,
+// 				    uint8_t wday,
+// 				    uint8_t mday,
+// 				    uint8_t mon,
+// 				    uint16_t year)
+// {
+// 	int century = year >= 2000 ? 1 : 0;
+// 	struct DS3234_date d = (struct DS3234_date){
+// 		dectobcd(sec),
+// 		dectobcd(min),
+// 		dectobcd(hour),
+// 		dectobcd(wday),
+// 		dectobcd(mday),
+// 		//mday,
+// 		dectobcd(mon) + century * 0x80,
+// 		dectobcd((uint8_t)(year - (1900 + (century * 100))))
+// 	};
+// 	return d;
+// }
+
+void date_to_string(DateTime d, long buflen, char *buf)
 {
 	snprintf(buf,
 		 buflen,
-		 "%d.%02d.%02d %02d:%02d:%02d",
-		 bcdtodec(d.year) + (1900 + (((d.mon_plus_cent & 0x80) >> 7) * 100)),
-		 bcdtodec(d.mon_plus_cent & 0x7F),
-		 bcdtodec(d.mday),
-		 bcdtodec(d.hour),
-		 bcdtodec(d.min),
-		 bcdtodec(d.sec));
+		 "%d.%02d.%02d %02d:%02d:%02d", d.year(), d.month(), d.day(), d.hour(), d.minute(), d.second());
 }
 
-osctime DS3234_date_to_osctime(struct DS3234_date d)
+osctime date_to_osctime(DateTime d)
 {
-	uint8_t i;
-	uint16_t day;
-	int16_t year;
-	int days_in_month[] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
+	//uint8_t i;
+	//uint16_t day;
+	//int16_t year;
+	//int days_in_month[] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
 	osctime time = {0, 0};
 
-	int d_year = bcdtodec(d.year) + (1900 + (((d.mon_plus_cent & 0x80) >> 7) * 100));
-	if (d_year >= 2000) {
-		year = (d_year - 2000) + 100;
-	} else {
-		return time;
-	}
+	// int d_year = bcdtodec(d.year()) + (1900 + (((d.mon_plus_cent & 0x80) >> 7) * 100));
+	// if (d_year >= 2000) {
+	// 	year = (d_year - 2000) + 100;
+	// } else {
+	// 	return time;
+	// }
 
-	int d_mon = bcdtodec(d.mon_plus_cent & 0x7F);
-	day = bcdtodec(d.mday) - 1;
-	for(i = 1; i < d_mon; i++){
-		day += days_in_month[i - 1];
-	}
-	if(d_mon > 2 && year % 4 == 0){
-		day++;
-	}
+	//int d_mon = bcdtodec(d.mon_plus_cent & 0x7F);
+	//day = bcdtodec(d.mday) - 1;
+	// for(i = 1; i < d_mon; i++){
+	// 	day += days_in_month[i - 1];
+	// }
+	// if(d_mon > 2 && year % 4 == 0){
+	// 	day++;
+	// }
 	// count leap days
-	day += (365 * year + (year + 3) / 4);
+	//day += (365 * year + (year + 3) / 4);
 
-	time.sec = ((day * 24UL + bcdtodec(d.hour)) * 60 + bcdtodec(d.min)) * 60 + bcdtodec(d.sec);// + 946684800;
+	//time.sec = ((day * 24UL + bcdtodec(d.hour)) * 60 + bcdtodec(d.min)) * 60 + bcdtodec(d.sec);// + 946684800;
+	time.sec = d.unixtime() + 2208988800L;
 	return time;
 }
 
@@ -371,18 +388,18 @@ osctime timenow()
 
 // flags are: A1M1 (seconds), A1M2 (minutes), A1M3 (hour),
 // A1M4 (day) 0 to enable, 1 to disable, DY/DT (dayofweek == 1/dayofmonth == 0)
-void DS3234_set_a1(const uint8_t pin, const uint8_t s, const uint8_t mi, const uint8_t h, const uint8_t d, const uint8_t * flags)
-{
-	uint8_t t[4] = { s, mi, h, d };
-	uint8_t i;
+// void DS3234_set_a1(const uint8_t pin, const uint8_t s, const uint8_t mi, const uint8_t h, const uint8_t d, const uint8_t * flags)
+// {
+// 	uint8_t t[4] = { s, mi, h, d };
+// 	uint8_t i;
 
-	for (i = 0; i < 4; i++) {
-		digitalWrite(pin, LOW);
-		SPI.transfer(i + 0x87);
-		SPI.transfer(dectobcd(t[i]) | (flags[i] << 7));
-		digitalWrite(pin, HIGH);
-	}
-}
+// 	for (i = 0; i < 4; i++) {
+// 		digitalWrite(pin, LOW);
+// 		SPI.transfer(i + 0x87);
+// 		SPI.transfer(dectobcd(t[i]) | (flags[i] << 7));
+// 		digitalWrite(pin, HIGH);
+// 	}
+// }
 
 void osc_timetag_encodeForHeader(osctime t, char *buf)
 {
@@ -396,6 +413,21 @@ void osc_timetag_encodeForHeader(osctime t, char *buf)
 
 	*((uint32_t *)p1) = hton32(*((uint32_t *)ttp1));
 	*((uint32_t *)p2) = hton32(*((uint32_t *)ttp2));
+}
+
+osctime osc_timetag_decodeFromHeader(char *buf)
+{
+	if(!buf){
+		return (osctime){0., 0.};
+	}
+	char *p1 = buf;
+	char *p2 = buf + 4;
+	osctime tt = {0., 0.};
+	char *ttp1 = (char *)&tt;
+	char *ttp2 = ttp1 + 4;
+	*((uint32_t *)ttp1) = ntoh32(*((uint32_t *)p1));
+	*((uint32_t *)ttp2) = ntoh32(*((uint32_t *)p2));
+	return tt;
 }
 
 osctime osc_timetag_add(osctime t1, osctime t2)
@@ -605,7 +637,7 @@ unsigned short int osc_timetag_getmonth(unsigned short int *day, unsigned short 
 }
 
 #define DWORD uint64_t
-struct DS3234_date  osctime_to_date(osctime timetag)
+DateTime osctime_to_date(osctime timetag)
 {
 	char s1[20];
 	uint32_t secs = timetag.sec;//osc_timetag_ntp_getSeconds(timetag);
@@ -687,187 +719,245 @@ struct DS3234_date  osctime_to_date(osctime timetag)
 	//current minute.
 	//Given the year & day of year, determine month & day of month
 	month = osc_timetag_getmonth(&day, leap);
-	DS3234_date d = make_DS3234_date(secs, minute, hour, 0, mday, month, year);
+	DateTime d(year, month, day, hour, minute, secs);
 	return d;
 }
 
-void getNtpTime()
+void osc_dispatch(long len, char *bndl)
 {
-#ifdef ECG_WIFI
-	while (udp.parsePacket() > 0) ; // discard any previously received packets
-	Serial.println("Transmit NTP Request");
-	sendNTPpacket(ntp_time_server);
-	uint32_t beginWait = millis();
-	while (millis() - beginWait < 1500) {
-		int size = udp.parsePacket();
-		if (size >= NTP_PACKET_SIZE) {
-			Serial.println("Receive NTP Response");
-			udp.read(packetBuffer, NTP_PACKET_SIZE);  // read packet into the buffer
-			//yield();
-			/* uint64_t t1 = ntoh64(*((uint64_t *)(packetBuffer + 16))); */
-			/* uint64_t t2 = ntoh64(*((uint64_t *)(packetBuffer + 24))); */
-			/* uint64_t t3 = ntoh64(*((uint64_t *)(packetBuffer + 32))); */
-			/* uint64_t t4 = ntoh64(*((uint64_t *)(packetBuffer + 40))); */
-			/* uint64_t t1 = ntoh32(*((uint32_t *)(packetBuffer + 16))) << 32 | ntoh32(*((uint32_t *)(packetBuffer + 20))); */
-			/* uint64_t t2 = ntoh32(*((uint32_t *)(packetBuffer + 24))) << 32 | ntoh32(*((uint32_t *)(packetBuffer + 28))); */
-			/* uint64_t t3 = ntoh32(*((uint32_t *)(packetBuffer + 32))) << 32 | ntoh32(*((uint32_t *)(packetBuffer + 36))); */
-			/* uint64_t t4 = ntoh32(*((uint32_t *)(packetBuffer + 40))) << 32 | ntoh32(*((uint32_t *)(packetBuffer + 44))); */
-			osctime t1 = (osctime){ntoh32(*((uint32_t *)(packetBuffer + 16))), ntoh32(*((uint32_t *)(packetBuffer + 20)))};
-			osctime t2 = (osctime){ntoh32(*((uint32_t *)(packetBuffer + 24))), ntoh32(*((uint32_t *)(packetBuffer + 28)))};
-			osctime t3 = (osctime){ntoh32(*((uint32_t *)(packetBuffer + 32))), ntoh32(*((uint32_t *)(packetBuffer + 36)))};
-			osctime t4 = (osctime){ntoh32(*((uint32_t *)(packetBuffer + 40))), ntoh32(*((uint32_t *)(packetBuffer + 44)))};
-			
-			osctime delta = osc_timetag_subtract(osc_timetag_subtract(t4, t1), osc_timetag_subtract(t3, t2));
-			osctime theta = float_to_osctime(0.5 * osctime_to_float(osc_timetag_add(osc_timetag_subtract(t2, t1), osc_timetag_subtract(t3, t4))));
-			if(osc_timetag_compare(theta,  theta_min) < 0){
-				Serial.println("better theta");
-				theta_min = theta;
-				delta_theta_min = delta;
-				printf("0x%llx\n", t4);
-				// set time
-				Serial.println(t4.frac_sec);
-				Serial.println((double)t4.frac_sec / 0xFFFFFFFF);
-				printf("%llu %llu\n", delta, theta);
-				//ttt.sec = ntoh32(ttt.sec);
-				//ttt.frac_sec = ntoh32(ttt.frac_sec);
-				//uint32_t tmicros = micros() + (1000000 - (((double)t4.frac_sec / 0xFFFFFFFF) * 1000000));
-				uint32_t ival_micros = (1000000 - (((double)t4.frac_sec / 0xFFFFFFFF) * 1000000));
-				Serial.print("waiting for ");
-				Serial.print((1000000 - (((double)t4.frac_sec / 0xFFFFFFFF) * 1000000)));
-				Serial.print("us, ");
-				Serial.print((1000000 - (((double)t4.frac_sec / 0xFFFFFFFF) * 1000000)) / (float)1000);
-				Serial.println("ms");
-				t4.sec++;
-				uint32_t cur_micros = micros();
-				uint32_t prev_micros = cur_micros;
-				//while(micros() < tmicros){
-				while(cur_micros - prev_micros < ival_micros){
-				      cur_micros = micros();
+	if(!bndl || len == 0){
+		return;
+	}
+	char *p = (char *)bndl + 16;
+	while(p < bndl + len){
+		int32_t size = ntoh32(*((int32_t *)p));
+		Serial.print("size = ");
+		Serial.println(size);
+		Serial.print("pfx = ");
+		Serial.println(get_osc_pfx(get_id()));
+		if(!strncmp(p + 4, get_osc_pfx(get_id()), 2)){
+			Serial.println("have prefix");
+			if(!strncmp(p + 6, "/set", 4)){
+				Serial.println("have set");
+				if(!strncmp(p + 10, "/time", 5)){
+					Serial.println("set time");
+					if(p[17] == 't'){
+						Serial.println("have timetag");
+						char t[64];
+						DateTime d = osctime_to_date(osc_timetag_decodeFromHeader(p + 20));
+						rtc.adjust(d);
+						//char buf[128];
+						//date_to_string(d, 128, buf);
+						//Serial.println(buf);
+					}
 				}
-				DS3234_set_date(osctime_to_date(t4));
-				yield();
-				return;
-			}else{
-				yield();
-				return;
 			}
 		}
-		yield();
-	}
-	Serial.println("No NTP Response :-(");
-#endif
-}
-
-// send an NTP request to the time server at the given address
-void sendNTPpacket(IPAddress &address)
-{
-#ifdef ECG_WIFI
-	// set all bytes in the buffer to 0
-	memset(packetBuffer, 0, NTP_PACKET_SIZE);
-	// Initialize values needed to form NTP request
-	// (see URL above for details on the packets)
-	packetBuffer[0] = 0b11100011;   // LI, Version, Mode
-	packetBuffer[1] = 0;     // Stratum, or type of clock
-	packetBuffer[2] = 6;     // Polling Interval
-	packetBuffer[3] = 0xEC;  // Peer Clock Precision
-	// 8 bytes of zero for Root Delay & Root Dispersion
-	packetBuffer[12]  = 49;
-	packetBuffer[13]  = 0x4E;
-	packetBuffer[14]  = 49;
-	packetBuffer[15]  = 52;
-	// all NTP fields have been given values, now
-	// you can send a packet requesting a timestamp:
-	udp.beginPacket(address, 123); //NTP requests are to port 123
-	udp.write(packetBuffer, NTP_PACKET_SIZE);
-	udp.endPacket();
-#endif
-}
-
-void ntp_sync(void)
-{
-	if(nsyncntp){
-		getNtpTime();
-		lastntpsync_micros = micros();
-		nsyncntp--;
-		if(nsyncntp == 0){
-			theta_min = (osctime){0xFFFFFFFF, 0xFFFFFFFF};
-			delta_theta_min = (osctime){0, 0};
-			ntp_syncing = 0;
-			// send_timestampbndl_start();
-		}
+		p += size + 4;
 	}
 }
 
-void ntp_sync_start(void)
-{
-	nsyncntp = NSYNCNTP;
-	ntp_syncing = 1;
-	ntp_sync();
-}
-
-void send_statusbndl(osctime t, char *address)
-{
-	memcpy(statusbndl + 20 + 3, address, 6);
-	osc_timetag_encodeForHeader(t, statusbndl + (sizeof(statusbndl) - 8));
-#ifdef ECG_WIFI
-	udp.beginPacket(remote_ip, remote_port);
-	udp.write(statusbndl, sizeof(statusbndl));
-	udp.endPacket();
-#endif
-}
-
-void send_resetbndl(osctime t)
-{
-	send_statusbndl(t, resetaddr);
-}
-
-void send_flashbndl(osctime t)
-{
-	send_statusbndl(t, flashaddr);
-}
-
-// void send_timestampbndl_start()
+// void getNtpTime()
 // {
-// 	ntimestampbndls = NTIMESTAMPBNDLS;
-// 	sending_timestampbndls = 1;
 // #ifdef ECG_WIFI
-// 	udp.beginPacket(remote_ip, remote_port);
-// 	udp.write(timestampbndl_start, sizeof(timestampbndl_start));
-// 	udp.endPacket();
-// #endif // ECG_WIFI
-// }
-
-// void send_timestampbndl_stop()
-// {
-// 	sending_timestampbndls = 0;
-// #ifdef ECG_WIFI
-// 	udp.beginPacket(remote_ip, remote_port);
-// 	udp.write(timestampbndl_stop, sizeof(timestampbndl_stop));
-// 	udp.endPacket();
-// #endif // ECG_WIFI
-// }
-
-// void send_timestampbndl(void)
-// {
-// 	if(ntimestampbndls){
-// 		if(ntimestampbndls == NTIMESTAMPBNDLS){
-// 			send_timestampbndl_start();
+// 	while (udp.parsePacket() > 0) ; // discard any previously received packets
+// 	Serial.println("Transmit NTP Request");
+// 	sendNTPpacket(ntp_time_server);
+// 	uint32_t beginWait = millis();
+// 	while (millis() - beginWait < 1500) {
+// 		int size = udp.parsePacket();
+// 		if (size >= NTP_PACKET_SIZE) {
+// 			Serial.println("Receive NTP Response");
+// 			udp.read(packetBuffer, NTP_PACKET_SIZE);  // read packet into the buffer
+// 			//yield();
+// 			/* uint64_t t1 = ntoh64(*((uint64_t *)(packetBuffer + 16))); */
+// 			/* uint64_t t2 = ntoh64(*((uint64_t *)(packetBuffer + 24))); */
+// 			/* uint64_t t3 = ntoh64(*((uint64_t *)(packetBuffer + 32))); */
+// 			/* uint64_t t4 = ntoh64(*((uint64_t *)(packetBuffer + 40))); */
+// 			/* uint64_t t1 = ntoh32(*((uint32_t *)(packetBuffer + 16))) << 32 | ntoh32(*((uint32_t *)(packetBuffer + 20))); */
+// 			/* uint64_t t2 = ntoh32(*((uint32_t *)(packetBuffer + 24))) << 32 | ntoh32(*((uint32_t *)(packetBuffer + 28))); */
+// 			/* uint64_t t3 = ntoh32(*((uint32_t *)(packetBuffer + 32))) << 32 | ntoh32(*((uint32_t *)(packetBuffer + 36))); */
+// 			/* uint64_t t4 = ntoh32(*((uint32_t *)(packetBuffer + 40))) << 32 | ntoh32(*((uint32_t *)(packetBuffer + 44))); */
+// 			osctime t1 = (osctime){ntoh32(*((uint32_t *)(packetBuffer + 16))), ntoh32(*((uint32_t *)(packetBuffer + 20)))};
+// 			osctime t2 = (osctime){ntoh32(*((uint32_t *)(packetBuffer + 24))), ntoh32(*((uint32_t *)(packetBuffer + 28)))};
+// 			osctime t3 = (osctime){ntoh32(*((uint32_t *)(packetBuffer + 32))), ntoh32(*((uint32_t *)(packetBuffer + 36)))};
+// 			osctime t4 = (osctime){ntoh32(*((uint32_t *)(packetBuffer + 40))), ntoh32(*((uint32_t *)(packetBuffer + 44)))};
+			
+// 			osctime delta = osc_timetag_subtract(osc_timetag_subtract(t4, t1), osc_timetag_subtract(t3, t2));
+// 			osctime theta = float_to_osctime(0.5 * osctime_to_float(osc_timetag_add(osc_timetag_subtract(t2, t1), osc_timetag_subtract(t3, t4))));
+// 			if(osc_timetag_compare(theta,  theta_min) < 0){
+// 				Serial.println("better theta");
+// 				theta_min = theta;
+// 				delta_theta_min = delta;
+// 				printf("0x%llx\n", t4);
+// 				// set time
+// 				Serial.println(t4.frac_sec);
+// 				Serial.println((double)t4.frac_sec / 0xFFFFFFFF);
+// 				printf("%llu %llu\n", delta, theta);
+// 				//ttt.sec = ntoh32(ttt.sec);
+// 				//ttt.frac_sec = ntoh32(ttt.frac_sec);
+// 				//uint32_t tmicros = micros() + (1000000 - (((double)t4.frac_sec / 0xFFFFFFFF) * 1000000));
+// 				uint32_t ival_micros = (1000000 - (((double)t4.frac_sec / 0xFFFFFFFF) * 1000000));
+// 				Serial.print("waiting for ");
+// 				Serial.print((1000000 - (((double)t4.frac_sec / 0xFFFFFFFF) * 1000000)));
+// 				Serial.print("us, ");
+// 				Serial.print((1000000 - (((double)t4.frac_sec / 0xFFFFFFFF) * 1000000)) / (float)1000);
+// 				Serial.println("ms");
+// 				t4.sec++;
+// 				uint32_t cur_micros = micros();
+// 				uint32_t prev_micros = cur_micros;
+// 				//while(micros() < tmicros){
+// 				while(cur_micros - prev_micros < ival_micros){
+// 				      cur_micros = micros();
+// 				}
+// 				DS3234_set_date(osctime_to_date(t4));
+// 				yield();
+// 				return;
+// 			}else{
+// 				yield();
+// 				return;
+// 			}
 // 		}
-// 		osctime t = timenow();
-// 		osc_timetag_encodeForHeader(t, timestampbndl + (sizeof(timestampbndl) - 8));
-// 		*((int32_t *)(timestampbndl + (sizeof(timestampbndl) - 12))) = hton32((NTIMESTAMPBNDLS + 1) - ntimestampbndls);
-// 		lasttimestampbndl_micros = micros();
+// 		yield();
+// 	}
+// 	Serial.println("No NTP Response :-(");
+// #endif
+// }
+
+// // send an NTP request to the time server at the given address
+// void sendNTPpacket(IPAddress &address)
+// {
 // #ifdef ECG_WIFI
-// 		udp.beginPacket(remote_ip, remote_port);
-// 		udp.write(timestampbndl, sizeof(timestampbndl));
-// 		udp.endPacket();
-// #endif // ECG_WIFI
-// 		ntimestampbndls--;
-// 		if(ntimestampbndls == 0){
-// 			send_timestampbndl_stop();
+// 	// set all bytes in the buffer to 0
+// 	memset(packetBuffer, 0, NTP_PACKET_SIZE);
+// 	// Initialize values needed to form NTP request
+// 	// (see URL above for details on the packets)
+// 	packetBuffer[0] = 0b11100011;   // LI, Version, Mode
+// 	packetBuffer[1] = 0;     // Stratum, or type of clock
+// 	packetBuffer[2] = 6;     // Polling Interval
+// 	packetBuffer[3] = 0xEC;  // Peer Clock Precision
+// 	// 8 bytes of zero for Root Delay & Root Dispersion
+// 	packetBuffer[12]  = 49;
+// 	packetBuffer[13]  = 0x4E;
+// 	packetBuffer[14]  = 49;
+// 	packetBuffer[15]  = 52;
+// 	// all NTP fields have been given values, now
+// 	// you can send a packet requesting a timestamp:
+// 	udp.beginPacket(address, 123); //NTP requests are to port 123
+// 	udp.write(packetBuffer, NTP_PACKET_SIZE);
+// 	udp.endPacket();
+// #endif
+// }
+
+// void ntp_sync(void)
+// {
+// 	if(nsyncntp){
+// 		getNtpTime();
+// 		lastntpsync_micros = micros();
+// 		nsyncntp--;
+// 		if(nsyncntp == 0){
+// 			theta_min = (osctime){0xFFFFFFFF, 0xFFFFFFFF};
+// 			delta_theta_min = (osctime){0, 0};
+// 			ntp_syncing = 0;
+// 			// send_timestampbndl_start();
 // 		}
 // 	}
 // }
+
+// void ntp_sync_start(void)
+// {
+// 	nsyncntp = NSYNCNTP;
+// 	ntp_syncing = 1;
+// 	ntp_sync();
+// }
+
+// void send_statusbndl(osctime t, char *address)
+// {
+// 	memcpy(statusbndl + 20 + 3, address, 6);
+// 	osc_timetag_encodeForHeader(t, statusbndl + (sizeof(statusbndl) - 8));
+// #ifdef ECG_WIFI
+// 	udp.beginPacket(remote_ip, remote_port);
+// 	udp.write((const uint8_t *)statusbndl, sizeof(statusbndl));
+// 	udp.endPacket();
+// #endif
+// }
+
+// void send_resetbndl(osctime t)
+// {
+// 	send_statusbndl(t, resetaddr);
+// }
+
+// void send_flashbndl(osctime t)
+// {
+// 	send_statusbndl(t, flashaddr);
+// }
+
+uint8_t get_id(void)
+{
+	uint8_t p1 = digitalRead(pin_id1);
+	uint8_t p2 = digitalRead(pin_id2);
+	uint8_t p3 = digitalRead(pin_id3);
+	Serial.print("get_id: ");
+	Serial.print(p1);
+	Serial.print(" ");
+        Serial.print(p2);
+	Serial.print(" ");
+	Serial.println(p3);
+
+	//uint8_t p4 = digitalRead(pin_id4);
+	//return (p4 << 3) | (p3 << 2) | (p2 << 1) | p1;
+	return (p3 << 2) | (p2 << 1) | p1;
+}
+
+const char heartbeat_bndl_size = 64;
+char heartbeat_bndl[heartbeat_bndl_size];
+void init_heartbeat_bndl(void)
+{
+	memset(heartbeat_bndl, 0, heartbeat_bndl_size);
+	char *p = heartbeat_bndl;
+	snprintf(p, heartbeat_bndl_size - (p - heartbeat_bndl), "#bundle");
+	p += 16;
+	*((int32_t *)p) = hton32(28);
+	p += 4;
+	IPAddress ipaddy = WiFi.localIP();
+	snprintf(p, heartbeat_bndl_size - (p - heartbeat_bndl), "/ip");
+	p += 4;
+	snprintf(p, heartbeat_bndl_size - (p - heartbeat_bndl), ",IIII");
+	p += 8;
+	Serial.print(ipaddy[0]);
+	Serial.print(".");
+	Serial.print(ipaddy[1]);
+	Serial.print(".");
+	Serial.print(ipaddy[2]);
+	Serial.print(".");
+	Serial.print(ipaddy[3]);
+	Serial.println();
+	*((uint32_t *)p) = hton32(ipaddy[0]);
+	p += 4;
+	*((uint32_t *)p) = hton32(ipaddy[1]);
+	p += 4;
+	*((uint32_t *)p) = hton32(ipaddy[2]);
+	p += 4;
+	*((uint32_t *)p) = hton32(ipaddy[3]);
+	p += 4;
+
+	*((int32_t *)p) = hton32(12);
+	p += 4;
+	snprintf(p, heartbeat_bndl_size - (p - heartbeat_bndl), "/px");
+	p += 4;
+	snprintf(p, heartbeat_bndl_size - (p - heartbeat_bndl), ",s");
+	p += 4;
+	snprintf(p, heartbeat_bndl_size - (p - heartbeat_bndl), "%s", get_osc_pfx(get_id()));
+}
+
+void send_heartbeat_bndl(void)
+{
+#ifdef ECG_WIFI
+	udp.beginPacket(full_ip, full_port);
+	udp.write((const uint8_t *)heartbeat_bndl, heartbeat_bndl_size);
+	udp.endPacket();
+#endif // ECG_WIFI
+}
 
 // isr for RTC alarm 1
 void isr_a1()
@@ -882,49 +972,127 @@ int int_send_flashbndl = 0;
 // isr to handle flash button press
 void isr_flash()
 {
-	if(digitalRead(pin_flash) == LOW){
-		int_flash = 1;
-		int_send_flashbndl = 1;
-		int_flash_down_micros = micros();
-		int_flashdown_time = timenow();
-		digitalWrite(pin_led, LOW);
-	}else{
-		int_flash_up_micros = micros();
-		int_flashup_time = timenow();
+	// if(digitalRead(pin_flash) == LOW){
+	// 	int_flash = 1;
+	// 	int_send_flashbndl = 1;
+	// 	int_flash_down_micros = micros();
+	// 	int_flashdown_time = timenow();
+	// 	digitalWrite(pin_led, LOW);
+	// }else{
+	// 	int_flash_up_micros = micros();
+	// 	int_flashup_time = timenow();
+	// }
+}
+
+boolean connected = false;
+
+void wifi_event_handler(WiFiEvent_t e)
+{
+	switch(e){
+	case SYSTEM_EVENT_STA_GOT_IP:
+		Serial.println(WiFi.localIP());
+		udp.begin(WiFi.localIP(), 8888);
+		connected = true;
+		break;
+	case SYSTEM_EVENT_STA_DISCONNECTED:
+		connected = false;
+		break;
 	}
+}
+
+void connect_to_wifi(const char *ssid, const char *pass)
+{
+	WiFi.disconnect(true);
+	WiFi.onEvent(wifi_event_handler);
+	WiFi.begin(ssid, pass);
+	while (WiFi.waitForConnectResult() != WL_CONNECTED) {
+		Serial.println("Connection Failed! Rebooting...");
+		delay(5000);
+		ESP.restart();
+	}
+}
+
+#if (ARDUINO >= 100)
+ #include <Arduino.h> // capital A so it is error prone on case-sensitive filesystems
+ // Macro to deal with the difference in I2C write functions from old and new Arduino versions.
+ #define _I2C_WRITE write
+ #define _I2C_READ  read
+#else
+ #include <WProgram.h>
+ #define _I2C_WRITE send
+ #define _I2C_READ  receive
+#endif
+
+static void write_i2c_register(uint8_t addr, uint8_t reg, uint8_t val) {
+  Wire.beginTransmission(addr);
+  Wire._I2C_WRITE((byte)reg);
+  Wire._I2C_WRITE((byte)val);
+  Wire.endTransmission();
+}
+
+static uint8_t read_i2c_register(uint8_t addr, uint8_t reg) {
+  Wire.beginTransmission(addr);
+  Wire._I2C_WRITE((byte)reg);
+  Wire.endTransmission();
+
+  Wire.requestFrom(addr, (byte)1);
+  return Wire._I2C_READ();
 }
 
 void setup()
 {
-	//ESP.wdtDisable();
-	//ESP.wdtEnable(WDTO_8S);
 #ifdef ECG_SERIAL
 	Serial.begin(115200);
 #endif // ECG_SERIAL
-
-	Serial.printf(" ESP8266 Chip id = %08X\n", ESP.getChipId());
-	Serial.print(" ESP8266 MAC address = ");
-	Serial.println(WiFi.macAddress());
-
+	pinMode(33, INPUT);
+	
 	pinMode(pin_led, OUTPUT);
-	digitalWrite(pin_led, HIGH);
+	digitalWrite(pin_led, LOW);
 
-	pinMode(pin_flash, INPUT);
-	attachInterrupt(digitalPinToInterrupt(pin_flash), isr_flash, CHANGE);
+	pinMode(pin_id1, INPUT);
+	pinMode(pin_id2, INPUT);
+	pinMode(pin_id3, INPUT);
+
+	// pinMode(pin_flash, INPUT);
+	// attachInterrupt(digitalPinToInterrupt(pin_flash), isr_flash, CHANGE);
 
 	pinMode(pin_sqw, INPUT); // this is the RTC alarm
 	digitalWrite(pin_sqw, HIGH);
 	attachInterrupt(digitalPinToInterrupt(pin_sqw), isr_a1, FALLING);
 
 #ifdef ECG_WIFI
-	// set up WiFi
-	WiFi.begin(ssid, pass);
-	int status = WiFi.waitForConnectResult();
-	while(status != WL_CONNECTED){
-		delay(250);
-	}
-	udp.begin(8888);
+	connect_to_wifi(ssid, pass);
 #endif // ECG_WIFI
+
+	ArduinoOTA.setPort(3232);
+	ArduinoOTA.setHostname(get_osc_pfx(get_id()));
+	ArduinoOTA
+		.onStart([]() {
+				String type;
+				if (ArduinoOTA.getCommand() == U_FLASH)
+					type = "sketch";
+				else // U_SPIFFS
+					type = "filesystem";
+
+				// NOTE: if updating SPIFFS this would be the place to unmount SPIFFS using SPIFFS.end()
+				Serial.println("Start updating " + type);
+			})
+		.onEnd([]() {
+				Serial.println("\nEnd");
+			})
+		.onProgress([](unsigned int progress, unsigned int total) {
+				Serial.printf("Progress: %u%%\r", (progress / (total / 100)));
+			})
+		.onError([](ota_error_t error) {
+				Serial.printf("Error[%u]: ", error);
+				if (error == OTA_AUTH_ERROR) Serial.println("Auth Failed");
+				else if (error == OTA_BEGIN_ERROR) Serial.println("Begin Failed");
+				else if (error == OTA_CONNECT_ERROR) Serial.println("Connect Failed");
+				else if (error == OTA_RECEIVE_ERROR) Serial.println("Receive Failed");
+				else if (error == OTA_END_ERROR) Serial.println("End Failed");
+			});
+
+	ArduinoOTA.begin();
 
 	lp = rtecg_ptlp_init();
 	hp = rtecg_pthp_init();
@@ -936,50 +1104,91 @@ void setup()
 	memset(tlst, 0, sizeof(tlst) / sizeof(osctime));
 	
 	// set up RTC
-	pinMode(pin_ss, OUTPUT);
-	SPI.begin();
-	SPI.setBitOrder(MSBFIRST);
-	SPI.setDataMode(SPI_MODE1);
+	// pinMode(pin_ss, OUTPUT);
+	// SPI.begin();
+	// SPI.setBitOrder(MSBFIRST);
+	// SPI.setDataMode(SPI_MODE1);
 
 	// set up header, size, address, and typetags for OSC bundle
 	memset(oscbndl, 0, sizeof(oscbndl)); 
 	char *h = "#bundle\0\0\0\0\0\0\0\0\0";
 	memcpy(oscbndl, h, 16); // header
 	*((int32_t *)(oscbndl + 16)) = hton32(oscbndl_size - 20); // message size
-	memcpy(oscbndl + 20, oscpfx, 3); // /aa
-	memcpy(oscbndl + 23, oscbndl_address, 4); // /ecg
+	//memcpy(oscbndl + 20, oscpfx, 3); // /aa
+	memcpy(oscbndl + 20, get_osc_pfx(get_id()), 2); // /aa
+	memcpy(oscbndl + 22, oscbndl_address, 4); // /ecg
 	memcpy(oscbndl + 28, oscbndl_typetags, 24); // typetags
 	*((int32_t *)(oscbndl + oscbndl_fs)) = hton32(RTECG_FS);
+
+	if(!rtc.begin()){
+		Serial.println("no rtc attached");
+	}else{
+		//write_i2c_register(DS3231_ADDRESS, 0x07, 0xF);
+		write_i2c_register(DS3231_ADDRESS, 0x0e, 0);
+		//rtc.writeSqwPinMode(DS3231_OFF);
+		
+		//rtc.adjust(DateTime(F(__DATE__), F(__TIME__)));
+	}
+	uint8_t r = read_i2c_register(DS3231_ADDRESS, 0x07);
+	Serial.println(r);
+	r = read_i2c_register(DS3231_ADDRESS, 0x08);
+	Serial.println(r);
+	r = read_i2c_register(DS3231_ADDRESS, 0x09);
+	Serial.println(r);
+	r = read_i2c_register(DS3231_ADDRESS, 0x0a);
+	Serial.println(r);
+	r = read_i2c_register(DS3231_ADDRESS, 0x0e);
+	Serial.println(r);
+	r = read_i2c_register(DS3231_ADDRESS, 0x0f);
+	Serial.println(r);
 
 	// notify the world that we did a reset
 	reset_time = timenow();
 	didreset = 1;
 
 	// set alarm 1 to go off every second
-	DS3234_set_a1(pin_ss, 0, 0, 0, 0, (const uint8_t[]){1, 1, 1, 1});
-	DS3234_set_reg(DS3234_SREG_WRITE, DS3234_get_reg(DS3234_SREG_READ) & ~DS3234_A1F);
+	//DS3234_set_a1(pin_ss, 0, 0, 0, 0, (const uint8_t[]){1, 1, 1, 1});
+	//DS3234_set_reg(DS3234_SREG_WRITE, DS3234_get_reg(DS3234_SREG_READ) & ~DS3234_A1F);
 	
 	// wait for a transition and then read the microsecond counter
-	while(DS3234_get_reg(DS3234_SREG_READ) & DS3234_A1F == 0){
-		;
-	}
+	//while(DS3234_get_reg(DS3234_SREG_READ) & DS3234_A1F == 0){
+	//;
+	//}
 	// micros_ref is set when the second counter transitions to a new value.
 	// we use it as a reference for generating a fraction of a second.
-	micros_ref = micros();
-	DS3234_set_reg(DS3234_SREG_WRITE, DS3234_get_reg(DS3234_SREG_READ) & ~DS3234_A1F);
+	//micros_ref = micros();
+	//DS3234_set_reg(DS3234_SREG_WRITE, DS3234_get_reg(DS3234_SREG_READ) & ~DS3234_A1F);
 	
 	// set up alarm 1 as an interrupt
-	DS3234_set_reg(DS3234_CREG_WRITE, DS3234_get_reg(DS3234_CREG_READ) | DS3234_A1IE);
+	//DS3234_set_reg(DS3234_CREG_WRITE, DS3234_get_reg(DS3234_CREG_READ) | DS3234_A1IE);
 
 	// send 8 bundles with time stamps to the client so that they can do statistics on the network jitter / latency
 	//send_timestampbndl_start();
 
 	tmicros_ival = 1000000. / RTECG_FS;
 	tmicros_prev = micros();
+
+	while(connected == 0){
+		sleep(1);
+	}
+	init_heartbeat_bndl();
 }
 
 void loop()
 {
+	ArduinoOTA.handle();
+	int packetSize = udp.parsePacket();
+	if (packetSize) {
+		unsigned char packetBuffer[255];
+		int len = udp.read(packetBuffer, 255);
+		if (len > 0) {
+			packetBuffer[len] = 0;
+			osc_dispatch(len, (char *)packetBuffer);
+			udp.beginPacket(udp.remoteIP(), full_port);
+			udp.write(packetBuffer, len);
+			udp.endPacket();
+		}
+	}
 	// spinlock to get as close to 5ms as we can before yielding
 	uint32_t tmicros_cur = micros();
 	while(tmicros_cur - tmicros_prev < tmicros_ival){
@@ -987,13 +1196,15 @@ void loop()
 	}
 	tmicros_prev = tmicros_cur;
 	// read pin
-	rtecg_int a0 = analogRead(A0);
-	// if alarm 1 went off, clear it and get the time
+	rtecg_int a0 = analogRead(A9);
 	if(int_a1){
-		current_date = DS3234_date_to_osctime(DS3234_get_date());
+		int id = get_id();
 		int_a1 = 0;
-		DS3234_set_reg(DS3234_SREG_WRITE, DS3234_get_reg(DS3234_SREG_READ) & ~DS3234_A1F);
+		DateTime d = rtc.now();
+		current_date = date_to_osctime(d);
+		send_heartbeat_bndl();
 	}
+	
 	// timenow refers to a global var that holds the current time from the RTC
 	osctime now = timenow();
 	tlst[tptr] = now;
@@ -1001,50 +1212,50 @@ void loop()
 	// now yield
 	yield();
 	// turn off LED if it was on from previous loop
-	if(digitalRead(pin_flash) == HIGH){
-		digitalWrite(pin_led, HIGH);
-	}
-	// if flash button was pressed, check state and see look at interval to see if there's something we should do
-	if(int_flash){
-		Serial.println("flash is or was down");
-		if(int_send_flashbndl){
-			Serial.println("should send flash bndl");
-			send_flashbndl(int_flashdown_time);
-			int_send_flashbndl = 0;
-		}
-		if(digitalRead(pin_flash) == LOW){
-			// flash button is still down
-			if(micros() - int_flash_down_micros >= 5000000){
-				// flash button has been down for more than 5 seconds. flash led and start NTP sync
-				digitalWrite(pin_led, HIGH);
-				delay(100);
-				digitalWrite(pin_led, LOW);
-				delay(100);
-				digitalWrite(pin_led, HIGH);
-				delay(100);
-				digitalWrite(pin_led, LOW);
-				delay(100);
-				digitalWrite(pin_led, HIGH);
-				// NTP sync
-				ntp_sync_start();
-				int_flash = 0;
-			}
-		}else{
-			// flash button has been released
-			digitalWrite(pin_flash, HIGH);
-			//send_timestampbndl_start();
-			int_flash = 0;
-		}
-	}
+	// if(digitalRead(pin_flash) == HIGH){
+	// 	digitalWrite(pin_led, HIGH);
+	// }
+	// // if flash button was pressed, check state and see look at interval to see if there's something we should do
+	// if(int_flash){
+	// 	Serial.println("flash is or was down");
+	// 	if(int_send_flashbndl){
+	// 		Serial.println("should send flash bndl");
+	// 		send_flashbndl(int_flashdown_time);
+	// 		int_send_flashbndl = 0;
+	// 	}
+	// 	if(digitalRead(pin_flash) == LOW){
+	// 		// flash button is still down
+	// 		if(micros() - int_flash_down_micros >= 5000000){
+	// 			// flash button has been down for more than 5 seconds. flash led and start NTP sync
+	// 			digitalWrite(pin_led, HIGH);
+	// 			delay(100);
+	// 			digitalWrite(pin_led, LOW);
+	// 			delay(100);
+	// 			digitalWrite(pin_led, HIGH);
+	// 			delay(100);
+	// 			digitalWrite(pin_led, LOW);
+	// 			delay(100);
+	// 			digitalWrite(pin_led, HIGH);
+	// 			// NTP sync
+	// 			ntp_sync_start();
+	// 			int_flash = 0;
+	// 		}
+	// 	}else{
+	// 		// flash button has been released
+	// 		digitalWrite(pin_flash, HIGH);
+	// 		//send_timestampbndl_start();
+	// 		int_flash = 0;
+	// 	}
+	// }
 	if(didreset){
 		// when the loop begins, we can't send packets right away, but there doesn't seem
 		// to be a way to find out when we can, so just wait for the first 50 to pass by, then send a reset
-		if(didreset == 50){
-			send_resetbndl(reset_time);
-			didreset = 0;
-		}else{
-			didreset++;
-		}
+		// if(didreset == 50){
+		// 	send_resetbndl(reset_time);
+		// 	didreset = 0;
+		// }else{
+		// 	didreset++;
+		// }
 	}
 	// send a timestamp bundle if we're in the middle of that
 	// if(sending_timestampbndls && micros() - lasttimestampbndl_micros >= TIMESTAMPBNDL_IVAL_MICROS){
@@ -1052,9 +1263,9 @@ void loop()
 	// }
 
 	// do an NTP sync if we're in the middle of that
-	if(nsyncntp && micros() - lastntpsync_micros >= 2000000){
-		ntp_sync();
-	}
+	// if(nsyncntp && micros() - lastntpsync_micros >= 2000000){
+	// 	ntp_sync();
+	// }
 	// filter ECG signal
         lp = rtecg_ptlp_hx0(lp, a0);
 	hp = rtecg_pthp_hx0(hp, rtecg_ptlp_y0(lp));
@@ -1091,20 +1302,21 @@ void loop()
 		yield();
 	}
 	if(pts.havepeak){
-		if(digitalRead(pin_flash) == HIGH){
-			digitalWrite(pin_led, LOW);		
-		}
+		// if(digitalRead(pin_flash) == HIGH){
+		// 	digitalWrite(pin_led, LOW);		
+		// }
 	}
 	//Serial.printf("-----------LOOP EXIT\n");
 	//yield();
 	//Serial.print(tmicros_cur);
 	if (WiFi.status() != WL_CONNECTED) {
 		yield();
-		WiFi.begin(ssid, pass);
-		int status = WiFi.waitForConnectResult();
-	        while(status != WL_CONNECTED){
-			delay(250);
-		}
+		// WiFi.begin(ssid, pass);
+		// int status = WiFi.waitForConnectResult();
+	        // while(status != WL_CONNECTED){
+		// 	delay(250);
+		// }
+		connect_to_wifi(ssid, pass);
 	}
 	if(ecg_send_full || pts.havepeak){
 		// put data in OSC bundle
@@ -1157,7 +1369,7 @@ void loop()
 		//Serial.print(" sending");
 		//if(ecg_send_full){
 			udp.beginPacket(full_ip, full_port);
-			udp.write(oscbndl, oscbndl_size);
+			udp.write((const uint8_t *)oscbndl, oscbndl_size);
 			udp.endPacket();
 		// }
 		// if(pts.havepeak){
@@ -1173,7 +1385,6 @@ void loop()
 		//SLIP//Serial.endPacket();
 		////Serial.println(a0);
 #endif // ECG_SERIAL
-
 	if(++tptr == (RTECG_FS * 2)){
 		tptr = 0;
 	}

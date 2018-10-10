@@ -2,14 +2,15 @@
 	"patcher" : 	{
 		"fileversion" : 1,
 		"appversion" : 		{
-			"major" : 7,
-			"minor" : 2,
-			"revision" : 3,
-			"architecture" : "x86",
+			"major" : 8,
+			"minor" : 0,
+			"revision" : 0,
+			"architecture" : "x64",
 			"modernui" : 1
 		}
 ,
-		"rect" : [ 547.0, 79.0, 737.0, 345.0 ],
+		"classnamespace" : "box",
+		"rect" : [ 547.0, 79.0, 668.0, 303.0 ],
 		"bglocked" : 0,
 		"openinpresentation" : 0,
 		"default_fontsize" : 12.0,
@@ -40,11 +41,11 @@
 				"box" : 				{
 					"comment" : "",
 					"id" : "obj-5",
+					"index" : 0,
 					"maxclass" : "outlet",
 					"numinlets" : 1,
 					"numoutlets" : 0,
-					"patching_rect" : [ 116.0, 168.0, 30.0, 30.0 ],
-					"style" : ""
+					"patching_rect" : [ 116.0, 168.0, 30.0, 30.0 ]
 				}
 
 			}
@@ -59,8 +60,7 @@
 					"numoutlets" : 2,
 					"outlettype" : [ "FullPacket", "FullPacket" ],
 					"patching_rect" : [ 116.0, 81.0, 502.0, 46.0 ],
-					"text" : "/self = \"/\" + split(\"/\", getbundlemember(match(\"/*/ecg\", getaddresses()), /full))[[0]]",
-					"textcolor" : [ 0.0, 0.0, 0.0, 1.0 ]
+					"text" : "/self = \"/\" + split(\"/\", getbundlemember(match(\"/*/ecg\", getaddresses()), /full))[[0]]"
 				}
 
 			}
@@ -68,12 +68,12 @@
 				"box" : 				{
 					"comment" : "",
 					"id" : "obj-1",
+					"index" : 0,
 					"maxclass" : "inlet",
 					"numinlets" : 0,
 					"numoutlets" : 1,
 					"outlettype" : [ "" ],
-					"patching_rect" : [ 116.0, 28.0, 30.0, 30.0 ],
-					"style" : ""
+					"patching_rect" : [ 116.0, 28.0, 30.0, 30.0 ]
 				}
 
 			}
@@ -81,8 +81,6 @@
 		"lines" : [ 			{
 				"patchline" : 				{
 					"destination" : [ "obj-2", 0 ],
-					"disabled" : 0,
-					"hidden" : 0,
 					"source" : [ "obj-1", 0 ]
 				}
 
@@ -90,8 +88,6 @@
 , 			{
 				"patchline" : 				{
 					"destination" : [ "obj-5", 0 ],
-					"disabled" : 0,
-					"hidden" : 0,
 					"source" : [ "obj-2", 0 ]
 				}
 
