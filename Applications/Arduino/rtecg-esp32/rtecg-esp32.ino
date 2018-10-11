@@ -3,7 +3,9 @@
 //#include <SPI.h>
 #include <Wire.h>
 #include <RTClib.h>
+#ifdef __RTECG_USE_OTA__
 #include <ArduinoOTA.h>
+#endif
 #include "rtecg.h"
 #include "rtecg_filter.h"
 #include "rtecg_pantompkins.h"
@@ -32,7 +34,6 @@ const char *get_osc_pfx(uint8_t id)
 uint8_t id = 0;
 
 #ifdef ECG_WIFI
-// WIFI AP
 //const char *ssid = "TP-LINK_40FE00";
 //const char *pass = "78457393";
 const char *ssid = "aether";
@@ -1063,7 +1064,7 @@ void setup()
 #ifdef ECG_WIFI
 	connect_to_wifi(ssid, pass);
 #endif // ECG_WIFI
-
+#ifdef __RTECG_USE_OTA__
 	ArduinoOTA.setPort(3232);
 	ArduinoOTA.setHostname(get_osc_pfx(get_id()));
 	ArduinoOTA
@@ -1093,7 +1094,7 @@ void setup()
 			});
 
 	ArduinoOTA.begin();
-
+#endif // OTA
 	lp = rtecg_ptlp_init();
 	hp = rtecg_pthp_init();
 	d = rtecg_ptd_init();
@@ -1176,7 +1177,9 @@ void setup()
 
 void loop()
 {
+#ifdef __RTECG_USE_OTA__
 	ArduinoOTA.handle();
+#endif 
 	int packetSize = udp.parsePacket();
 	if (packetSize) {
 		unsigned char packetBuffer[255];
