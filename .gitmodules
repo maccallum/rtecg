@@ -1,10 +1,10 @@
 [submodule "Applications/lib/libo"]
-	path = Applications/lib/libo
+	path = lib/libo
 	url = https://github.com/CNMAT/libo.git
 	ignore = dirty
 [submodule "Applications/lib/libomax"]
-	path = Applications/lib/libomax
+	path = lib/libomax
 	url = https://github.com/CNMAT/libomax.git
 [submodule "Applications/lib/max-sdk"]
-	path = Applications/lib/max-sdk
+	path = lib/max-sdk
 	url = https://github.com/cycling74/max-sdk.git
