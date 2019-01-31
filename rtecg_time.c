@@ -17,13 +17,15 @@ void rtecg_time_init(void)
 	micros_prev = micros();
 }
 
-void rtecg_time_wait(void)
+int rtecg_time_wait(void)
 {
 	uint32_t micros_cur = micros();
-	while(micros_cur - micros_prev < micros_ival){
+	int d;
+	while((d = (micros_cur - micros_prev)) < micros_ival){
 		micros_cur = micros();
 	}
 	micros_prev = micros_cur;
+	return d;
 }
 
 int rtecg_time_tick(void)

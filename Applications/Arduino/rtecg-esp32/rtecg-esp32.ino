@@ -11,9 +11,9 @@
 #include <rtecg_rtc.h>
 //#include <rtecg_time.h>
 
-#define pin_ecg A9
+#define pin_ecg A2
 #define pin_led 13
-#define pin_rtc_sqw 34
+#define pin_rtc_sqw 27
 
 // classifier state data structures
 uint32_t tmicros;

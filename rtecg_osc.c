@@ -29,7 +29,7 @@ const char *rtecg_osc_getpfx(uint8_t id, uint8_t npfxs, const char **pfxs)
 	return pfxs[id];
 }
 
-char *rtecg_osc_bndl_typetags = ",ItiiiiItifItiffffffff\0\0";
+char *rtecg_osc_bndl_typetags = ",ItiiiiiItifItiffffffff\0";
 char rtecg_osc_bndl[20 	// header and message size
 		    + RTECG_OSC_ADDRESS_LEN	// address
 		    + 24	// typetags

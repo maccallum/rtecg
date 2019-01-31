@@ -8,7 +8,7 @@ extern "C" {
 #include <lib/libo/osc_timetag.h>
 
 void rtecg_time_init(void);
-void rtecg_time_wait(void);
+int rtecg_time_wait(void);
 int rtecg_time_tick(void);
 t_osc_timetag rtecg_time_now(void);
 t_osc_timetag rtecg_time_then(int nticks_in_past);
