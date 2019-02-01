@@ -1,19 +1,18 @@
 #include <stdint.h>
 
-#include <WiFi.h>
-#include <WiFiUdp.h>
-#include <Wire.h>
+#include <Ethernet.h>
+#include <EthernetUdp.h>
 
 #include <rtecg.h>
 #include <rtecg_filter.h>
 #include <rtecg_pantompkins.h>
 #include <rtecg_osc.h>
-#include <rtecg_rtc.h>
-//#include <rtecg_time.h>
+//#include <rtecg_rtc.h>
+#include <rtecg_time.h>
 
 #define pin_ecg A2
 #define pin_led 13
-#define pin_rtc_sqw 27
+#define pin_rtc_sqw 34
 
 // classifier state data structures
 uint32_t tmicros;
@@ -30,38 +29,13 @@ rtecg_pt pts; // pan-tompkins algorithm applied to pkf and pki
 //uint32_t tmicros_prev, tmicros_ival;
 
 // WiFi 
-const char *ssid = "TP-LINK_40FE00";
-const char *pass = "78457393";
+//const char *ssid = "TP-LINK_40FE00";
+//const char *pass = "78457393";
+byte mac[] = {0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED};
 IPAddress ipaddy(192, 168, 0, 200);
+IPAddress localipaddy(192, 168, 0, 130);
 const unsigned int port = 9998;
-WiFiUDP udp;
-boolean connected = false;
-
-void wifi_event_handler(WiFiEvent_t e)
-{
-	switch(e){
-	case SYSTEM_EVENT_STA_GOT_IP:
-		Serial.println(WiFi.localIP());
-		udp.begin(WiFi.localIP(), 8888);
-		connected = true;
-		break;
-	case SYSTEM_EVENT_STA_DISCONNECTED:
-		connected = false;
-		break;
-	}
-}
-
-void connect_to_wifi(const char *ssid, const char *pass)
-{
-	WiFi.disconnect(true);
-	WiFi.onEvent(wifi_event_handler);
-	WiFi.begin(ssid, pass);
-	while (WiFi.waitForConnectResult() != WL_CONNECTED) {
-		Serial.println("Connection Failed! Rebooting...");
-		delay(5000);
-		ESP.restart();
-	}
-}
+EthernetUDP udp;
 
 void setup()
 {
@@ -70,7 +44,16 @@ void setup()
 	pinMode(pin_led, OUTPUT); // led to blink when there's a heartbeat
 	digitalWrite(pin_led, LOW);
 
-	connect_to_wifi(ssid, pass);
+	//Ethernet.init(15); // ESP8266 with Adafruit Featherwing Ethernet
+	Ethernet.init(33); // ESP32 with Adafruit Featherwing Ethernet
+	Ethernet.begin(mac);
+	if(Ethernet.hardwareStatus() == EthernetNoHardware){
+		Serial.println("No Ethernet hardware found.");
+	}
+	if(Ethernet.linkStatus() == LinkOFF){
+		Serial.println("Ethernet cable is not connected.");
+	}
+	udp.begin(8888);
 
 	// initialize feature classification data structures
 	lp = rtecg_ptlp_init();
@@ -83,20 +66,20 @@ void setup()
 
 	rtecg_osc_init_pt(0);
 
-	rtecg_rtc_init(pin_rtc_sqw);
-	//rtecg_time_init();
+	//rtecg_rtc_init(pin_rtc_sqw);
+	rtecg_time_init();
 }
 
 void loop()
 {
-	int sample_width = rtecg_rtc_wait();
-	//rtecg_time_wait();
+	//int sample_width = rtecg_rtc_wait();
+	int sample_width = rtecg_time_wait();
 
 	// now read ECG pin
 	rtecg_int ecgval = analogRead(pin_ecg);
 
-	rtecg_rtc_tick();
-	//rtecg_time_tick();
+	//rtecg_rtc_tick();
+	rtecg_time_tick();
 
 	// yield control in case any housekeeping needs to get done
 	yield();
@@ -144,21 +127,21 @@ void loop()
 	}
 	char *oscbndl = NULL;
 	int oscbndl_size = rtecg_osc_wrap_pt(pts.ctr, // packet number
-					     rtecg_rtc_then(0), // micros
-					     //rtecg_time_then(0),
+					     //rtecg_rtc_then(0), // micros
+					     rtecg_time_then(0),
 					     RTECG_FS, // fs
 					     sample_width,
 					     ecgval, // raw
 					     rtecg_pthp_y0(hp), // filtered
 					     rtecg_pti_y0(mwi), // mwi
 					     pts.ctr - rtecg_pt_last_spkf(pts).x, // spkf sample num
-					     rtecg_rtc_then(rtecg_pt_last_spkf(pts).x + RTECG_PKDEL + 1),
-					     //rtecg_time_then(rtecg_pt_last_spkf(pts).x + RTECG_PKDEL + 1),
+					     //rtecg_rtc_then(rtecg_pt_last_spkf(pts).x + RTECG_PKDEL + 1),
+					     rtecg_time_then(rtecg_pt_last_spkf(pts).x + RTECG_PKDEL + 1),
 					     rtecg_pt_last_spkf(pts).y, // spkf sample val
 					     rtecg_pt_last_spkf(pts).confidence, // spkf confidence
 					     pts.ctr - rtecg_pt_last_spki(pts).x, // spki sample num
-					     rtecg_rtc_then(rtecg_pt_last_spki(pts).x + RTECG_PKDEL + 1),
-					     //rtecg_time_then(rtecg_pt_last_spki(pts).x + RTECG_PKDEL + 1),
+					     //rtecg_rtc_then(rtecg_pt_last_spki(pts).x + RTECG_PKDEL + 1),
+					     rtecg_time_then(rtecg_pt_last_spki(pts).x + RTECG_PKDEL + 1),
 					     rtecg_pt_last_spki(pts).y, // spki sample val
 					     rtecg_pt_last_spki(pts).confidence, // spki confidence
 					     rr, 
@@ -169,17 +152,11 @@ void loop()
 					     pts.i1,
 					     pts.i2,
 					     &oscbndl);
-
-	if(WiFi.status() != WL_CONNECTED){
-		yield();
-		connect_to_wifi(ssid, pass);
-	}
-
-	udp.beginPacket(ipaddy, port);
-	udp.write((const uint8_t *)oscbndl, oscbndl_size);
+	int ret = udp.beginPacket(ipaddy, port);
+	ret = udp.write((const uint8_t *)oscbndl, oscbndl_size);
 	udp.endPacket();
 
-	// flash LED if we have a peak
+	//flash LED if we have a peak
 	if(pts.havepeak){
 		if(digitalRead(pin_led) == HIGH){
 			digitalWrite(pin_led, LOW);		

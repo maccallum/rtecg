@@ -3,17 +3,17 @@
 #include <lib/libo/osc_timetag.c>
 
 #ifndef RTECG_OSC_ADDRESS_LEN
-#define RTECG_OSC_ADDRESS_LEN 8 // pfx + address
+#define RTECG_OSC_ADDRESS_LEN 20 // pfx + address
 #endif
-#ifndef RTECG_OSC_BNDL_NPFXS
-#define RTECG_OSC_BNDL_NPFXS 16
-#endif
-const uint8_t rtecg_osc_bndl_npfxs = RTECG_OSC_BNDL_NPFXS;
-#ifndef RTECG_OSC_BNDL_PFXS
-#define RTECG_OSC_BNDL_PFXS {"/a", "/b", "/c", "/d", "/e", "/f", "/g", "/h", "/i", "/j", "/k", "/l", "/m", "/n", "/o", "/p"}
-#endif
-//const char *rtecg_osc_bndl_pfxs[16] = {"/a", "/b", "/c", "/d", "/e", "/f", "/g", "/h", "/i", "/j", "/k", "/l", "/m", "/n", "/o", "/p"};
-const char *rtecg_osc_bndl_pfxs[] = RTECG_OSC_BNDL_PFXS;
+// #ifndef RTECG_OSC_BNDL_NPFXS
+// #define RTECG_OSC_BNDL_NPFXS 16
+// #endif
+// const uint8_t rtecg_osc_bndl_npfxs = RTECG_OSC_BNDL_NPFXS;
+// #ifndef RTECG_OSC_BNDL_PFXS
+// #define RTECG_OSC_BNDL_PFXS {"/a", "/b", "/c", "/d", "/e", "/f", "/g", "/h", "/i", "/j", "/k", "/l", "/m", "/n", "/o", "/p"}
+// #endif
+// //const char *rtecg_osc_bndl_pfxs[16] = {"/a", "/b", "/c", "/d", "/e", "/f", "/g", "/h", "/i", "/j", "/k", "/l", "/m", "/n", "/o", "/p"};
+// const char *rtecg_osc_bndl_pfxs[] = RTECG_OSC_BNDL_PFXS;
 #ifndef RTECG_OSC_BNDL_ADDRESS
 #define RTECG_OSC_BNDL_ADDRESS "/ecg"
 #endif
@@ -21,13 +21,13 @@ const char *rtecg_osc_bndl_pfxs[] = RTECG_OSC_BNDL_PFXS;
 const char *rtecg_osc_bndl_address = RTECG_OSC_BNDL_ADDRESS;
 //const char *rtecg_osc_getpfx(uint8_t id, const char *pfxs[]);
 
-const char *rtecg_osc_getpfx(uint8_t id, uint8_t npfxs, const char **pfxs)
-{
-	if(id > npfxs){
-		id = 0;
-	}
-	return pfxs[id];
-}
+// const char *rtecg_osc_getpfx(uint8_t id, uint8_t npfxs, const char **pfxs)
+// {
+// 	if(id > npfxs){
+// 		id = 0;
+// 	}
+// 	return pfxs[id];
+// }
 
 char *rtecg_osc_bndl_typetags = ",ItiiiiiItifItiffffffff\0";
 char rtecg_osc_bndl[20 	// header and message size
@@ -79,7 +79,7 @@ int rtecg_osc_bndl_i1;
 int rtecg_osc_bndl_i2;
 int32_t rtecg_osc_bndl_size;
 
-void rtecg_osc_init_pt(int id)
+void rtecg_osc_init_pt(char *oscpfx, int pfxlen)
 {
 	rtecg_osc_bndl_pnum = 44 + RTECG_OSC_ADDRESS_LEN;
 	rtecg_osc_bndl_time = rtecg_osc_bndl_pnum + 4;
@@ -111,8 +111,8 @@ void rtecg_osc_init_pt(int id)
 	ptr += 16;
 	*((uint32_t *)(ptr)) = hton32(rtecg_osc_bndl_size - 20);
 	ptr += 4;
-	snprintf(ptr, 8, "%s%s", rtecg_osc_getpfx(id, rtecg_osc_bndl_npfxs, rtecg_osc_bndl_pfxs), rtecg_osc_bndl_address);
-	ptr += 8;
+	snprintf(ptr, RTECG_OSC_ADDRESS_LEN, "/%s%s", oscpfx, rtecg_osc_bndl_address);
+	ptr += RTECG_OSC_ADDRESS_LEN;
 	//memcpy(rtecg_osc_bndl + 20, rtecg_osc_getpfx(id, rtecg_osc_pfxs), 2);
 	//memcpy(rtecg_osc_bndl + 22, rtecg_osc_address, 4);
 	memcpy(ptr, rtecg_osc_bndl_typetags, 24);

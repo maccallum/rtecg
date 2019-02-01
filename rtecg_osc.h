@@ -8,7 +8,7 @@ extern "C" {
 #include <stdint.h>
 #include <lib/libo/osc_timetag.h>
 
-void rtecg_osc_init_pt(int id);
+void rtecg_osc_init_pt(char *oscpfx, int pfxlen);
 int rtecg_osc_wrap_pt(uint32_t packet_num,
 		      t_osc_timetag time,
 		      int32_t fs,

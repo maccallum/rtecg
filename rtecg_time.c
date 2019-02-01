@@ -28,6 +28,15 @@ int rtecg_time_wait(void)
 	return d;
 }
 
+void rtecg_time_set(t_osc_timetag t)
+{
+	current_date = t;
+	tlst[tptr++] = t;
+	if(tptr == (RTECG_FS * 2)){
+		tptr = 0;
+	}
+}
+
 int rtecg_time_tick(void)
 {
 	int ret = 0;
@@ -36,11 +45,7 @@ int rtecg_time_tick(void)
 	if(prev.sec != now.sec){
 		ret = 1;
 	}
-	current_date = now;
-	tlst[tptr++] = now;
-	if(tptr == (RTECG_FS * 2)){
-		tptr = 0;
-	}
+	rtecg_time_set(now);
 	return ret;
 }
 

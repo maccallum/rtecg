@@ -10,6 +10,7 @@ extern "C" {
 void rtecg_time_init(void);
 int rtecg_time_wait(void);
 int rtecg_time_tick(void);
+void rtecg_time_set(t_osc_timetag t);
 t_osc_timetag rtecg_time_now(void);
 t_osc_timetag rtecg_time_then(int nticks_in_past);
 
