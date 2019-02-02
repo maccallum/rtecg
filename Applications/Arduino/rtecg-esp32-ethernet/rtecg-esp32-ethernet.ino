@@ -1,7 +1,10 @@
 #include <stdint.h>
 
+#include "esp_system.h"
+
 #include <Ethernet.h>
 #include <EthernetUdp.h>
+#define UDP_TX_PACKET_MAX_SIZE 256
 
 #include <rtecg.h>
 #include <rtecg_filter.h>
@@ -9,10 +12,11 @@
 #include <rtecg_osc.h>
 //#include <rtecg_rtc.h>
 #include <rtecg_time.h>
+#include <rtecg_heartbeat.h>
 
 #define pin_ecg A2
 #define pin_led 13
-#define pin_rtc_sqw 34
+
 
 // classifier state data structures
 uint32_t tmicros;
@@ -23,18 +27,13 @@ rtecg_pti mwi; // moving window integrator
 rtecg_pk pkf; // peaks in the filtered signal
 rtecg_pk pki; // peaks in the integrated signal
 rtecg_pt pts; // pan-tompkins algorithm applied to pkf and pki
-//t_osc_timetag tlst[RTECG_FS * 2];
-//int tptr = 0;
-// keep track of the microsecond count for accurate sampling
-//uint32_t tmicros_prev, tmicros_ival;
 
-// WiFi 
-//const char *ssid = "TP-LINK_40FE00";
-//const char *pass = "78457393";
+// networking
 byte mac[] = {0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED};
 IPAddress ipaddy(192, 168, 0, 200);
 IPAddress localipaddy(192, 168, 0, 130);
 const unsigned int port = 9998;
+
 EthernetUDP udp;
 
 void setup()

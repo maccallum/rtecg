@@ -16,7 +16,7 @@
 
 #define pin_ecg A2
 #define pin_led 13
-#define pin_rtc_sqw 34
+
 
 // classifier state data structures
 uint32_t tmicros;
@@ -27,19 +27,11 @@ rtecg_pti mwi; // moving window integrator
 rtecg_pk pkf; // peaks in the filtered signal
 rtecg_pk pki; // peaks in the integrated signal
 rtecg_pt pts; // pan-tompkins algorithm applied to pkf and pki
-//t_osc_timetag tlst[RTECG_FS * 2];
-//int tptr = 0;
-// keep track of the microsecond count for accurate sampling
-//uint32_t tmicros_prev, tmicros_ival;
 
 // networking
-//const char *ssid = "TP-LINK_40FE00";
-//const char *pass = "78457393";
 byte mac[6];
 char macstr[13];
-//char ip_local[4], ip_remote[4];
 IPAddress ip_local, ip_remote(192, 168, 0, 200), ip_bcast;
-//IPAddress ipaddy(192, 168, 0, 200);
 const unsigned int port_local = 8888;
 const unsigned int port_remote = 9998;
 const unsigned int port_bcast = 323232;
@@ -114,9 +106,9 @@ void loop()
 		yield();
 
 		// turn off LED if it was on from previous loop
-		if(digitalRead(pin_led) == HIGH){
-			digitalWrite(pin_led, HIGH);
-		}
+		// if(digitalRead(pin_led) == LOW){
+		// 	digitalWrite(pin_led, HIGH);
+		// }
 
 		// filter ECG signal
 		lp = rtecg_ptlp_hx0(lp, ecgval);
@@ -185,11 +177,13 @@ void loop()
 		ret = udp.write((const uint8_t *)oscbndl, oscbndl_size);
 		ret = udp.endPacket();
 
-		//flash LED if we have a peak
+		// flash LED if we have a peak
 		if(pts.havepeak){
-			if(digitalRead(pin_led) == HIGH){
-				digitalWrite(pin_led, LOW);		
-			}
+			//if(digitalRead(pin_led) == LOW){
+			digitalWrite(pin_led, HIGH);
+				//}
+		}else{
+			digitalWrite(pin_led, LOW);
 		}
 	}else{
 		yield();

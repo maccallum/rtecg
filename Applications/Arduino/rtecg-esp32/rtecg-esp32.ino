@@ -1,5 +1,7 @@
 #include <stdint.h>
 
+#include "esp_system.h"
+
 #include <WiFi.h>
 #include <WiFiUdp.h>
 #include <Wire.h>
@@ -10,6 +12,7 @@
 #include <rtecg_osc.h>
 #include <rtecg_rtc.h>
 //#include <rtecg_time.h>
+#include <rtecg_heartbeat.h>
 
 #define pin_ecg A2
 #define pin_led 13
@@ -24,16 +27,13 @@ rtecg_pti mwi; // moving window integrator
 rtecg_pk pkf; // peaks in the filtered signal
 rtecg_pk pki; // peaks in the integrated signal
 rtecg_pt pts; // pan-tompkins algorithm applied to pkf and pki
-//t_osc_timetag tlst[RTECG_FS * 2];
-//int tptr = 0;
-// keep track of the microsecond count for accurate sampling
-//uint32_t tmicros_prev, tmicros_ival;
 
-// WiFi 
+// networking
 const char *ssid = "TP-LINK_40FE00";
 const char *pass = "78457393";
 IPAddress ipaddy(192, 168, 0, 200);
 const unsigned int port = 9998;
+
 WiFiUDP udp;
 boolean connected = false;
 
