@@ -31,7 +31,12 @@ int rtecg_osc_wrap_pt(uint32_t packet_num,
 		      float f2,
 		      float i1,
 		      float i2,
+		      float bat,
 		      char **oscbndl);
+
+char *rtecg_osc_match_no_wc(char *address, int len, char *bndl);
+t_osc_timetag rtecg_osc_getTimetagFromHeader(int len, char *bndl);
+int rtecg_osc_getIPAddress(int len, char *bndl, char ip[4]);
 
 #ifdef __cplusplus
 }

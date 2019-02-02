@@ -16,6 +16,7 @@
 
 #define pin_ecg A2
 #define pin_led 13
+#define pin_bat A13
 
 
 // classifier state data structures
@@ -44,6 +45,7 @@ void setup()
 	pinMode(pin_ecg, INPUT); // analog pin that the ecg is attached to
 	pinMode(pin_led, OUTPUT); // led to blink when there's a heartbeat
 	digitalWrite(pin_led, LOW);
+	pinMode(pin_bat, INPUT);
 
 	//Ethernet.init(15); // ESP8266 with Adafruit Featherwing Ethernet
 	Ethernet.init(33); // ESP32 with Adafruit Featherwing Ethernet
@@ -84,31 +86,20 @@ void setup()
 char incoming_packet[UDP_TX_PACKET_MAX_SIZE];
 void loop()
 {
+	// read ECG pin right away
+	rtecg_int ecgval = analogRead(pin_ecg);
+	
 	int size = udp.parsePacket();
 	if(size){
 		udp.read(incoming_packet, UDP_TX_PACKET_MAX_SIZE);
-		t_osc_timetag t = {0, 0};
-		if(size >= 16 && !strncmp(incoming_packet, "#bundle\0", 8)){
-			t = osc_timetag_decodeFromHeader(incoming_packet + 8);
-		}
-		//int sample_width = rtecg_rtc_wait();
-		//int sample_width = rtecg_time_wait();
+		t_osc_timetag t = rtecg_osc_getTimetagFromHeader(size, incoming_packet);
+
 		int sample_width = 0;
 
-		// now read ECG pin
-		rtecg_int ecgval = analogRead(pin_ecg);
-
 		rtecg_time_set(t);
-		//rtecg_rtc_tick();
-		//rtecg_time_tick();
 
 		// yield control in case any housekeeping needs to get done
 		yield();
-
-		// turn off LED if it was on from previous loop
-		// if(digitalRead(pin_led) == LOW){
-		// 	digitalWrite(pin_led, HIGH);
-		// }
 
 		// filter ECG signal
 		lp = rtecg_ptlp_hx0(lp, ecgval);
@@ -148,21 +139,18 @@ void loop()
 		}
 		char *oscbndl = NULL;
 		int oscbndl_size = rtecg_osc_wrap_pt(pts.ctr, // packet number
-						     //rtecg_rtc_then(0), // micros
-						     rtecg_time_then(0),
+							     rtecg_time_then(0),
 						     RTECG_FS, // fs
 						     sample_width,
 						     ecgval, // raw
 						     rtecg_pthp_y0(hp), // filtered
 						     rtecg_pti_y0(mwi), // mwi
 						     pts.ctr - rtecg_pt_last_spkf(pts).x, // spkf sample num
-						     //rtecg_rtc_then(rtecg_pt_last_spkf(pts).x + RTECG_PKDEL + 1),
-						     rtecg_time_then(rtecg_pt_last_spkf(pts).x + RTECG_PKDEL + 1),
+							     rtecg_time_then(rtecg_pt_last_spkf(pts).x + RTECG_PKDEL + 1),
 						     rtecg_pt_last_spkf(pts).y, // spkf sample val
 						     rtecg_pt_last_spkf(pts).confidence, // spkf confidence
 						     pts.ctr - rtecg_pt_last_spki(pts).x, // spki sample num
-						     //rtecg_rtc_then(rtecg_pt_last_spki(pts).x + RTECG_PKDEL + 1),
-						     rtecg_time_then(rtecg_pt_last_spki(pts).x + RTECG_PKDEL + 1),
+							     rtecg_time_then(rtecg_pt_last_spki(pts).x + RTECG_PKDEL + 1),
 						     rtecg_pt_last_spki(pts).y, // spki sample val
 						     rtecg_pt_last_spki(pts).confidence, // spki confidence
 						     rr, 
@@ -172,8 +160,17 @@ void loop()
 						     pts.f2,
 						     pts.i1,
 						     pts.i2,
+						     (analogRead(pin_bat) * 2.) / 1000.,
 						     &oscbndl);
-		int ret = udp.beginPacket(ip_remote, port_remote);
+
+		IPAddress ipaddy = udp.remoteIP();
+		char ip[4] = {ipaddy[0], ipaddy[1], ipaddy[2], ipaddy[3]};
+	        rtecg_osc_getIPAddress(size, incoming_packet, ip);
+		ipaddy[0] = ip[0];
+		ipaddy[1] = ip[1];
+		ipaddy[2] = ip[2];
+		ipaddy[3] = ip[3];
+		int ret = udp.beginPacket(ipaddy, port_remote);
 		ret = udp.write((const uint8_t *)oscbndl, oscbndl_size);
 		ret = udp.endPacket();
 

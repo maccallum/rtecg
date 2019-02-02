@@ -29,10 +29,11 @@ const char *rtecg_osc_bndl_address = RTECG_OSC_BNDL_ADDRESS;
 // 	return pfxs[id];
 // }
 
-char *rtecg_osc_bndl_typetags = ",ItiiiiiItifItiffffffff\0";
+char *rtecg_osc_bndl_typetags = ",ItiiiiiItifItifffffffff\0\0\0\0";
+#define RTECG_OSC_BNDL_TYPETAGS_LEN 28
 char rtecg_osc_bndl[20 	// header and message size
 		    + RTECG_OSC_ADDRESS_LEN	// address
-		    + 24	// typetags
+		    + RTECG_OSC_BNDL_TYPETAGS_LEN	// typetags
 		    + 4	// packet number
 		    + 8	// time
 		    + 4	// sampling frequency
@@ -54,7 +55,8 @@ char rtecg_osc_bndl[20 	// header and message size
 		    + 4	// f1
 		    + 4	// f2
 		    + 4	// i1
-		    + 4];	// i2
+		    + 4 // i2
+		    + 4]; // battery
 int rtecg_osc_bndl_pnum;
 int rtecg_osc_bndl_time;
 int rtecg_osc_bndl_fs;
@@ -77,11 +79,12 @@ int rtecg_osc_bndl_f1;
 int rtecg_osc_bndl_f2;
 int rtecg_osc_bndl_i1;
 int rtecg_osc_bndl_i2;
+int rtecg_osc_bndl_bat;
 int32_t rtecg_osc_bndl_size;
 
 void rtecg_osc_init_pt(char *oscpfx, int pfxlen)
 {
-	rtecg_osc_bndl_pnum = 44 + RTECG_OSC_ADDRESS_LEN;
+	rtecg_osc_bndl_pnum = 20 + RTECG_OSC_BNDL_TYPETAGS_LEN + RTECG_OSC_ADDRESS_LEN;
 	rtecg_osc_bndl_time = rtecg_osc_bndl_pnum + 4;
 	rtecg_osc_bndl_fs = rtecg_osc_bndl_time + 8;
 	rtecg_osc_bndl_width = rtecg_osc_bndl_fs + 4;
@@ -103,7 +106,8 @@ void rtecg_osc_init_pt(char *oscpfx, int pfxlen)
 	rtecg_osc_bndl_f2 = rtecg_osc_bndl_f1 + 4;
 	rtecg_osc_bndl_i1 = rtecg_osc_bndl_f2 + 4;
 	rtecg_osc_bndl_i2 = rtecg_osc_bndl_i1 + 4;
-	rtecg_osc_bndl_size = rtecg_osc_bndl_i2 + 4;
+	rtecg_osc_bndl_bat = rtecg_osc_bndl_i2 + 4;
+	rtecg_osc_bndl_size = rtecg_osc_bndl_bat + 4;
 	
 	memset(rtecg_osc_bndl, 0, rtecg_osc_bndl_size);
 	char *ptr = rtecg_osc_bndl;
@@ -115,7 +119,7 @@ void rtecg_osc_init_pt(char *oscpfx, int pfxlen)
 	ptr += RTECG_OSC_ADDRESS_LEN;
 	//memcpy(rtecg_osc_bndl + 20, rtecg_osc_getpfx(id, rtecg_osc_pfxs), 2);
 	//memcpy(rtecg_osc_bndl + 22, rtecg_osc_address, 4);
-	memcpy(ptr, rtecg_osc_bndl_typetags, 24);
+	memcpy(ptr, rtecg_osc_bndl_typetags, RTECG_OSC_BNDL_TYPETAGS_LEN);
 }
 
 int rtecg_osc_wrap_pt(uint32_t packet_num,
@@ -140,6 +144,7 @@ int rtecg_osc_wrap_pt(uint32_t packet_num,
 		      float f2,
 		      float i1,
 		      float i2,
+		      float bat,
 		      char **oscbndl)
 {
 	*((uint32_t *)(rtecg_osc_bndl + rtecg_osc_bndl_pnum)) = hton32(packet_num);
@@ -165,6 +170,60 @@ int rtecg_osc_wrap_pt(uint32_t packet_num,
 	*((int32_t *)(rtecg_osc_bndl + rtecg_osc_bndl_f2)) = hton32(*((int32_t *)&(f2)));
 	*((int32_t *)(rtecg_osc_bndl + rtecg_osc_bndl_i1)) = hton32(*((int32_t *)&(i1)));
 	*((int32_t *)(rtecg_osc_bndl + rtecg_osc_bndl_i2)) = hton32(*((int32_t *)&(i2)));
+	*((int32_t *)(rtecg_osc_bndl + rtecg_osc_bndl_bat)) = hton32(*((int32_t *)&(bat)));
 	*oscbndl = rtecg_osc_bndl;
 	return rtecg_osc_bndl_size;
+}
+
+#define RTECG_MIN_BNDL_LEN 24 // header (16) size (4) address (4) 
+
+char *rtecg_osc_match_no_wc(char *address, int len, char *bndl)
+{
+	if(len < RTECG_MIN_BNDL_LEN){
+		return NULL;
+	}
+	if(strncmp(bndl, "#bundle\0", 8)){
+		return NULL;
+	}
+	char *p = bndl + 16;
+	while(p - bndl < len){
+		int32_t size = ntoh32(*((int32_t *)bndl));
+		if(!strcmp(address, p + 4)){
+			return p;
+		}else{
+			p += size + 4;
+		}
+	}
+}
+
+t_osc_timetag rtecg_osc_getTimetagFromHeader(int len, char *bndl)
+{
+	if(len < 16){
+		return (t_osc_timetag){0, 0};
+	}
+	if(strncmp(bndl, "#bundle\0", 8)){
+		return (t_osc_timetag){0, 0};
+	}
+	return osc_timetag_decodeFromHeader(bndl + 8);
+}
+
+int rtecg_osc_getIPAddress(int len, char *bndl, char ip[4])
+{
+	char *m = rtecg_osc_match_no_wc("/ip", len, bndl);
+	if(!m){
+		return 1;
+	}
+	char *p = m;
+	int32_t size = ntoh32(*((int32_t *)p));
+	p += 8; // size + address
+	if(strcmp(p, ",iiii")){
+		return 1;
+	}
+	p += 8;
+	ip[0] = ntoh32(*((int32_t *)p));
+	ip[1] = ntoh32(*((int32_t *)(p + 4)));
+	ip[2] = ntoh32(*((int32_t *)(p + 8)));
+	ip[3] = ntoh32(*((int32_t *)(p + 12)));
+	
+	return 0;
 }
