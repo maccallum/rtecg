@@ -29,7 +29,7 @@ const char *rtecg_osc_bndl_address = RTECG_OSC_BNDL_ADDRESS;
 // 	return pfxs[id];
 // }
 
-char *rtecg_osc_bndl_typetags = ",ItiiiiiItifItifffffffff\0\0\0\0";
+char *rtecg_osc_bndl_typetags = ",ItiiTTiiiItifItifffffffff\0\0";
 #define RTECG_OSC_BNDL_TYPETAGS_LEN 28
 char rtecg_osc_bndl[20 	// header and message size
 		    + RTECG_OSC_ADDRESS_LEN	// address
@@ -81,6 +81,7 @@ int rtecg_osc_bndl_i1;
 int rtecg_osc_bndl_i2;
 int rtecg_osc_bndl_bat;
 int32_t rtecg_osc_bndl_size;
+char *rtecg_osc_bndl_lead_status_ptr;
 
 void rtecg_osc_init_pt(char *oscpfx, int pfxlen)
 {
@@ -115,17 +116,20 @@ void rtecg_osc_init_pt(char *oscpfx, int pfxlen)
 	ptr += 16;
 	*((uint32_t *)(ptr)) = hton32(rtecg_osc_bndl_size - 20);
 	ptr += 4;
-	snprintf(ptr, RTECG_OSC_ADDRESS_LEN, "/%s%s", oscpfx, rtecg_osc_bndl_address);
+	snprintf(ptr, RTECG_OSC_ADDRESS_LEN, "%s%s", oscpfx, rtecg_osc_bndl_address);
 	ptr += RTECG_OSC_ADDRESS_LEN;
 	//memcpy(rtecg_osc_bndl + 20, rtecg_osc_getpfx(id, rtecg_osc_pfxs), 2);
 	//memcpy(rtecg_osc_bndl + 22, rtecg_osc_address, 4);
 	memcpy(ptr, rtecg_osc_bndl_typetags, RTECG_OSC_BNDL_TYPETAGS_LEN);
+	rtecg_osc_bndl_lead_status_ptr = rtecg_osc_bndl + 16 + 4 + RTECG_OSC_ADDRESS_LEN + 5;
 }
 
 int rtecg_osc_wrap_pt(uint32_t packet_num,
 		      t_osc_timetag time,
 		      int32_t fs,
 		      int32_t width,
+		      int lead_off_neg,
+		      int lead_off_pos,
 		      int32_t raw,
 		      int32_t filtered,
 		      int32_t mwi,
@@ -152,6 +156,12 @@ int rtecg_osc_wrap_pt(uint32_t packet_num,
 	osc_timetag_encodeForHeader(time, rtecg_osc_bndl + rtecg_osc_bndl_time);
 	*((int32_t *)(rtecg_osc_bndl + rtecg_osc_bndl_fs)) = hton32(fs);
 	*((int32_t *)(rtecg_osc_bndl + rtecg_osc_bndl_width)) = hton32(width);
+	if(lead_off_neg == 0){
+		*rtecg_osc_bndl_lead_status_ptr = 'F';
+	}
+	if(lead_off_pos == 0){
+		*(rtecg_osc_bndl_lead_status_ptr + 1) = 'F';
+	}
 	*((int32_t *)(rtecg_osc_bndl + rtecg_osc_bndl_raw)) = hton32(raw);
 	*((int32_t *)(rtecg_osc_bndl + rtecg_osc_bndl_filt)) = hton32(filtered);
 	*((int32_t *)(rtecg_osc_bndl + rtecg_osc_bndl_mwi)) = hton32(mwi);
@@ -209,13 +219,13 @@ t_osc_timetag rtecg_osc_getTimetagFromHeader(int len, char *bndl)
 
 int rtecg_osc_getIPAddress(int len, char *bndl, char ip[4])
 {
-	char *m = rtecg_osc_match_no_wc("/ip", len, bndl);
+	char *m = rtecg_osc_match_no_wc("/ip/remote", len, bndl);
 	if(!m){
 		return 1;
 	}
 	char *p = m;
 	int32_t size = ntoh32(*((int32_t *)p));
-	p += 8; // size + address
+	p += 16; // size + address
 	if(strcmp(p, ",iiii")){
 		return 1;
 	}
@@ -225,5 +235,23 @@ int rtecg_osc_getIPAddress(int len, char *bndl, char ip[4])
 	ip[2] = ntoh32(*((int32_t *)(p + 8)));
 	ip[3] = ntoh32(*((int32_t *)(p + 12)));
 	
+	return 0;
+}
+
+int rtecg_osc_getPort(int len, char *bndl, uint32_t *port)
+{
+	*port = 0;
+	char *m = rtecg_osc_match_no_wc("/port/remote", len, bndl);
+	if(!m){
+		return 1;
+	}
+	char *p = m;
+	int32_t size = ntoh32(*((int32_t *)p));
+	p += 20; // size + address
+	if(strcmp(p, ",i")){
+		return 1;
+	}
+	p += 4;
+	*port = ntoh32(*((int32_t *)p));
 	return 0;
 }

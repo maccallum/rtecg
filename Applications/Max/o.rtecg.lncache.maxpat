@@ -73,7 +73,7 @@
 					"numoutlets" : 2,
 					"outlettype" : [ "FullPacket", "FullPacket" ],
 					"patching_rect" : [ 102.0, 106.0, 475.0, 127.0 ],
-					"text" : "map(assign, /self + [\"/ecg/samplenum\", \"/ecg/time\", \"/ecg/fs\",\"/ecg/samplewidth/us\", \"/ecg/raw\", \"/ecg/filtered\", \"/ecg/mwi\", \"/ecg/spkf/samplenum\", \"/ecg/spkf/time\", \"/ecg/spkf/value\", \"/ecg/spkf/confidence\", \"/ecg/spki/samplenum\", \"/ecg/spki/time\", \"/ecg/spki/value\", \"/ecg/spki/confidence\", \"/ecg/rr\", \"/ecg/rravg/1\", \"/ecg/rravg/2\", \"/ecg/f1\", \"/ecg/f2\", \"/ecg/i1\", \"/ecg/i2\"], value(/self + \"/ecg\"))"
+					"text" : "map(assign, /self + [\"/ecg/samplenum\", \"/ecg/time\", \"/ecg/fs\",\"/ecg/samplewidth/us\", \"/ecg/leadoff/neg\", \"/ecg/leadoff/pos\", \"/ecg/raw\", \"/ecg/filtered\", \"/ecg/mwi\", \"/ecg/spkf/samplenum\", \"/ecg/spkf/time\", \"/ecg/spkf/value\", \"/ecg/spkf/confidence\", \"/ecg/spki/samplenum\", \"/ecg/spki/time\", \"/ecg/spki/value\", \"/ecg/spki/confidence\", \"/ecg/rr\", \"/ecg/rravg/1\", \"/ecg/rravg/2\", \"/ecg/f1\", \"/ecg/f2\", \"/ecg/i1\", \"/ecg/i2\", \"/ecg/bat\"], value(/self + \"/ecg\"))"
 				}
 
 			}

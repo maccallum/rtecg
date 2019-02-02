@@ -6,6 +6,8 @@
 #include <WiFiUdp.h>
 #include <Wire.h>
 
+#define RTECG_UDP_INCOMING_PACKET_MAX_SIZE 256
+
 #include <rtecg.h>
 #include <rtecg_filter.h>
 #include <rtecg_pantompkins.h>
@@ -17,6 +19,9 @@
 #define pin_ecg A2
 #define pin_led 13
 #define pin_rtc_sqw 27
+#define pin_bat A13
+#define pin_lom 39
+#define pin_lop 36
 
 // classifier state data structures
 uint32_t tmicros;
@@ -31,8 +36,12 @@ rtecg_pt pts; // pan-tompkins algorithm applied to pkf and pki
 // networking
 const char *ssid = "TP-LINK_40FE00";
 const char *pass = "78457393";
-IPAddress ipaddy(192, 168, 0, 200);
-const unsigned int port = 9998;
+byte mac[6];
+char macstr[14];
+IPAddress ip_local, ip_remote(192, 168, 0, 200), ip_bcast;
+const unsigned int port_local = 8888;
+unsigned int port_remote = 9998;
+const unsigned int port_bcast = 323232;
 
 WiFiUDP udp;
 boolean connected = false;
@@ -41,8 +50,8 @@ void wifi_event_handler(WiFiEvent_t e)
 {
 	switch(e){
 	case SYSTEM_EVENT_STA_GOT_IP:
-		Serial.println(WiFi.localIP());
-		udp.begin(WiFi.localIP(), 8888);
+		ip_local = WiFi.localIP();
+		udp.begin(ip_local, port_local);
 		connected = true;
 		break;
 	case SYSTEM_EVENT_STA_DISCONNECTED:
@@ -69,8 +78,12 @@ void setup()
 	pinMode(pin_ecg, INPUT); // analog pin that the ecg is attached to
 	pinMode(pin_led, OUTPUT); // led to blink when there's a heartbeat
 	digitalWrite(pin_led, LOW);
+	pinMode(pin_bat, INPUT);
+	pinMode(pin_lom, INPUT);
+	pinMode(pin_lop, INPUT);
 
 	connect_to_wifi(ssid, pass);
+	esp_read_mac(mac, ESP_MAC_WIFI_STA);
 
 	// initialize feature classification data structures
 	lp = rtecg_ptlp_init();
@@ -81,30 +94,35 @@ void setup()
 	pki = rtecg_pk_init();
 	pts = rtecg_pt_init();
 
-	rtecg_osc_init_pt(0);
+	snprintf(macstr, 14, "/%02X%02X%02X%02X%02X%02X", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+	rtecg_osc_init_pt(macstr, 13);
+
+	ip_bcast = ip_local;
+	ip_bcast[3] = 255;
+	uint32_t ipl = (uint32_t)ip_local;
+	uint32_t ipr = (uint32_t)ip_remote;
+	rtecg_heartbeat_init((char *)mac, (char *)(&ipl), port_local, (char *)(&ipr), port_remote, macstr, 12);
 
 	rtecg_rtc_init(pin_rtc_sqw);
 	//rtecg_time_init();
 }
 
+char incoming_packet[RTECG_UDP_INCOMING_PACKET_MAX_SIZE];
 void loop()
 {
 	int sample_width = rtecg_rtc_wait();
 	//rtecg_time_wait();
 
-	// now read ECG pin
+	// now read ECG pin and lead off states
 	rtecg_int ecgval = analogRead(pin_ecg);
+	rtecg_int lom = digitalRead(pin_lom);
+	rtecg_int lop = digitalRead(pin_lop);	
 
-	rtecg_rtc_tick();
+	int tick_roll = rtecg_rtc_tick();
 	//rtecg_time_tick();
 
 	// yield control in case any housekeeping needs to get done
 	yield();
-
-	// turn off LED if it was on from previous loop
-	if(digitalRead(pin_led) == HIGH){
-		digitalWrite(pin_led, HIGH);
-	}
 
 	// filter ECG signal
 	lp = rtecg_ptlp_hx0(lp, ecgval);
@@ -148,6 +166,8 @@ void loop()
 					     //rtecg_time_then(0),
 					     RTECG_FS, // fs
 					     sample_width,
+					     lom, // lead off
+					     lop, // lead off
 					     ecgval, // raw
 					     rtecg_pthp_y0(hp), // filtered
 					     rtecg_pti_y0(mwi), // mwi
@@ -168,6 +188,7 @@ void loop()
 					     pts.f2,
 					     pts.i1,
 					     pts.i2,
+					     (analogRead(pin_bat) * 2.) / 1000.,
 					     &oscbndl);
 
 	if(WiFi.status() != WL_CONNECTED){
@@ -175,14 +196,40 @@ void loop()
 		connect_to_wifi(ssid, pass);
 	}
 
-	udp.beginPacket(ipaddy, port);
+	int size = udp.parsePacket();
+	if(size){
+		udp.read(incoming_packet, RTECG_UDP_INCOMING_PACKET_MAX_SIZE);
+		char ip[4];
+		int ret = rtecg_osc_getIPAddress(size, incoming_packet, ip);
+		if(!ret){
+			ip_remote[0] = ip[0];
+			ip_remote[1] = ip[1];
+			ip_remote[2] = ip[2];
+			ip_remote[3] = ip[3];
+			rtecg_heartbeat_set_ip_remote(ip);
+		}
+		uint32_t port = 0;
+		ret = rtecg_osc_getPort(size, incoming_packet, &port);
+		if(!ret){
+			port_remote = port;
+			rtecg_heartbeat_set_port_remote(port);
+		}
+	}
+
+	udp.beginPacket(ip_remote, port_remote);
 	udp.write((const uint8_t *)oscbndl, oscbndl_size);
 	udp.endPacket();
 
 	// flash LED if we have a peak
 	if(pts.havepeak){
-		if(digitalRead(pin_led) == HIGH){
-			digitalWrite(pin_led, LOW);		
-		}
+		digitalWrite(pin_led, HIGH);
+	}else{
+		digitalWrite(pin_led, LOW);
+	}
+
+	if(tick_roll){
+		int ret = udp.beginPacket(ip_bcast, port_bcast);
+		ret = udp.write((const uint8_t *)rtecg_heartbeat_bndl(), rtecg_heartbeat_len());
+		ret = udp.endPacket();
 	}
 }
