@@ -172,12 +172,12 @@ void loop()
 					     rtecg_pthp_y0(hp), // filtered
 					     rtecg_pti_y0(mwi), // mwi
 					     pts.ctr - rtecg_pt_last_spkf(pts).x, // spkf sample num
-					     rtecg_rtc_then(rtecg_pt_last_spkf(pts).x + RTECG_PKDEL + 1),
+					     rtecg_rtc_then(rtecg_pt_last_spkf(pts).x + RTECG_PKDEL), // spkf sample time
 					     //rtecg_time_then(rtecg_pt_last_spkf(pts).x + RTECG_PKDEL + 1),
 					     rtecg_pt_last_spkf(pts).y, // spkf sample val
 					     rtecg_pt_last_spkf(pts).confidence, // spkf confidence
 					     pts.ctr - rtecg_pt_last_spki(pts).x, // spki sample num
-					     rtecg_rtc_then(rtecg_pt_last_spki(pts).x + RTECG_PKDEL + 1),
+					     rtecg_rtc_then(rtecg_pt_last_spki(pts).x + RTECG_PKDEL), // spki sample time
 					     //rtecg_time_then(rtecg_pt_last_spki(pts).x + RTECG_PKDEL + 1),
 					     rtecg_pt_last_spki(pts).y, // spki sample val
 					     rtecg_pt_last_spki(pts).confidence, // spki confidence
