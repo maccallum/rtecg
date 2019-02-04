@@ -117,7 +117,7 @@ void loop()
 		int buflen = 1;
 		char buf[buflen];
 		buf[0] = 0;
-		pts = rtecg_pt_process(pts, rtecg_pk_y0(pkf) * rtecg_pk_xm82(pkf), rtecg_pk_maxslope(pkf), rtecg_pk_y0(pki) * rtecg_pk_xm82(pki), rtecg_pk_maxslope(pki), buf, buflen, 0);
+		pts = rtecg_pt_process(pts, rtecg_pk_y0(pkf) * rtecg_pk_xmNm1d2(pkf), rtecg_pk_maxslope(pkf), rtecg_pk_y0(pki) * rtecg_pk_xmNm1d2(pki), rtecg_pk_maxslope(pki), buf, buflen, 0);
 
 		// yield again in case the classification took a long time
 		yield();

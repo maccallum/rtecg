@@ -16,10 +16,10 @@
 #define ps(s)
 #endif
 
-//#define RTECG_PT_RRLOWLIMIT 0.92
-//#define RTECG_PT_RRHIGHLIMIT 1.16
-#define RTECG_PT_RRLOWLIMIT 0.85
-#define RTECG_PT_RRHIGHLIMIT 1.26
+#define RTECG_PT_RRLOWLIMIT 0.92
+#define RTECG_PT_RRHIGHLIMIT 1.16
+//#define RTECG_PT_RRLOWLIMIT 0.85
+//#define RTECG_PT_RRHIGHLIMIT 1.26
 #define RTECG_PT_RRMISSEDLIMIT 1.66
 
 rtecg_pt rtecg_pt_reset(rtecg_pt s)
@@ -48,19 +48,19 @@ rtecg_pt rtecg_pt_computerr(rtecg_pt s, char *buf, size_t buflen, int bufptr)
 	if(s.havefirstpeak){
 		rtecg_float rr = (s.last_spkf.x - s.last_last_spkf.x);
 		pd("rr = %d - %d\n", (rtecg_int)s.last_spkf.x, (rtecg_int)s.last_last_spkf.x);
-		if(s.large_drop_event){
-			if(rr < s.large_drop_event_to * RTECG_PT_LARGE_DROP_THRESH2){
-				s.large_drop_event = 0;
-				s.large_drop_event_from = 0;
-				s.large_drop_event_to = 0;
-			}
-		}else{
-			if(rr > s.rr * RTECG_PT_LARGE_DROP_THRESH1){
-				s.large_drop_event = 1;
-				s.large_drop_event_from = s.rr;
-				s.large_drop_event_to = rr;
-			}
-		}
+		// if(s.large_drop_event){
+		// 	if(rr < s.large_drop_event_to * RTECG_PT_LARGE_DROP_THRESH2){
+		// 		s.large_drop_event = 0;
+		// 		s.large_drop_event_from = 0;
+		// 		s.large_drop_event_to = 0;
+		// 	}
+		// }else{
+		// 	if(rr > s.rr * RTECG_PT_LARGE_DROP_THRESH1){
+		// 		s.large_drop_event = 1;
+		// 		s.large_drop_event_from = s.rr;
+		// 		s.large_drop_event_to = rr;
+		// 	}
+		// }
 		s.rr = rr;
 		s.rrsum1 = 0;
 		s.rrbuf1[s.rrptr1] = rr;
@@ -219,10 +219,14 @@ rtecg_pt rtecg_pt_process(rtecg_pt s, rtecg_int pkf, rtecg_int maxslopef, rtecg_
 	pd("%s\n", "rtecg_pt_process");
 	s.searchback = 0;
 	s.ctr++;
+	// there's often some noise when the ECG is powered up, so skip the first N samples
 	if(s.ctr < RTECG_PREBURNLEN){
 		pd("%s\n", "preburn");
 		return s;
 	}
+	// We don't have any reasonable way to estimate the thresholds, so
+	// we look for the two largest peaks in some number of samples and calculate
+	// them based on those two peaks
 	if(s.ctr <= RTECG_PREBURNLEN + RTECG_BURNLEN){
 		pd("%s\n", "burn");
 		if(pkf > s.last_spkf.y){
@@ -238,8 +242,6 @@ rtecg_pt rtecg_pt_process(rtecg_pt s, rtecg_int pkf, rtecg_int maxslopef, rtecg_
 			s.tspki = s.spki = (s.last_last_spki.y + s.last_spki.y) / 2.;
 			s.tnpkf = s.npkf = 0.25 * s.spkf;
 			s.tnpki = s.npki = 0.25 * s.spki;
-			//s.tnpkf = s.npkf = (out[FILT][inpkrf1] + out[FILT][inpkrf2]) / 2.;
-			//s.tnpki = s.npki = (out[MWI][inpkri1] + out[MWI][inpkri2]) / 2.;
 			s.f1 = s.npkf + .25 * (s.spkf - s.npkf);
 			s.f2 = s.f1 * .5;
 			s.i1 = s.npki + .25 * (s.spki - s.npki);
@@ -259,15 +261,15 @@ rtecg_pt rtecg_pt_process(rtecg_pt s, rtecg_int pkf, rtecg_int maxslopef, rtecg_
 			pd("npkf %d -> %d\n", (rtecg_int)onpkf, (rtecg_int)s.npkf);
 			s.f1 = s.npkf + .25 * (s.spkf - s.npkf);
 			s.f2 = s.f1 * .5;
-#ifdef RTECG_LIMIT_BPM_INCREASES
-		}else if((!s.large_drop_event || s.rravg1 < 240) && (s.rr && !s.burn_avg1 && (60. / ((s.ctr - s.last_spkf.x) / (float)RTECG_FS) > RTECG_MAX_BPM_INCREASE * (60. / (s.rravg1 / RTECG_FS))))){
-			pd("%s\n", "reject pkf due to RTECG_LIMIT_BPM_INCREASES criteria");
-			rtecg_float onpkf = s.npkf;
-			s.npkf = 0.125 * pkf + .875 * s.npkf;
-			pd("npkf %d -> %d\n", (rtecg_int)onpkf, (rtecg_int)s.npkf);
-			s.f1 = s.npkf + .25 * (s.spkf - s.npkf);
-			s.f2 = s.f1 * .5;
-#endif
+// #ifdef RTECG_LIMIT_BPM_INCREASES
+// 		}else if((!s.large_drop_event || s.rravg1 < 240) && (s.rr && !s.burn_avg1 && (60. / ((s.ctr - s.last_spkf.x) / (float)RTECG_FS) > RTECG_MAX_BPM_INCREASE * (60. / (s.rravg1 / RTECG_FS))))){
+// 			pd("%s\n", "reject pkf due to RTECG_LIMIT_BPM_INCREASES criteria");
+// 			rtecg_float onpkf = s.npkf;
+// 			s.npkf = 0.125 * pkf + .875 * s.npkf;
+// 			pd("npkf %d -> %d\n", (rtecg_int)onpkf, (rtecg_int)s.npkf);
+// 			s.f1 = s.npkf + .25 * (s.spkf - s.npkf);
+// 			s.f2 = s.f1 * .5;
+// #endif
 		}else{
 			pd("%s\n", "adding pkf to list");
 			s.pkf[s.ptrf] = (rtecg_spk){s.ctr, pkf, maxslopef, 0};

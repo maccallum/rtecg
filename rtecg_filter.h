@@ -9,21 +9,21 @@ typedef struct _rtecg_ptlp
 {
 	rtecg_int y0, y1, y2;
 	rtecg_int xs[RTECG_LPBUFLEN];
-	rtecg_int xm24, xm48;
+	rtecg_int xm6, xm12;
 } rtecg_ptlp;
 
 typedef struct _rtecg_pthp
 {
 	rtecg_int y, z;
 	rtecg_int xs[RTECG_HPBUFLEN];
-	rtecg_int xm64, xm128;
+	rtecg_int xm16, xm17, xm32;
 } rtecg_pthp;
 
 typedef struct _rtecg_ptd
 {
 	rtecg_int y;
 	rtecg_int xs[RTECG_DERIVLEN];
-	rtecg_int xm1;
+	rtecg_int xm1, xm2, xm3, xm4;
 } rtecg_ptd;
 
 typedef struct _rtecg_pti
@@ -36,7 +36,7 @@ typedef struct _rtecg_pti
 typedef struct _rtecg_pk
 {
 	rtecg_int xs[RTECG_PKWINLEN];
-	rtecg_int xm165, xm82;
+	rtecg_int xmNm1, xmNm1d2;
 	rtecg_int y0;
 	rtecg_int maxslope;
 } rtecg_pk;
@@ -60,7 +60,7 @@ rtecg_int rtecg_pti_y0(rtecg_pti s);
 rtecg_pk rtecg_pk_init(void);
 rtecg_pk rtecg_pk_mark(rtecg_pk s, rtecg_int x0);
 rtecg_int rtecg_pk_y0(rtecg_pk s);
-rtecg_int rtecg_pk_xm82(rtecg_pk s);
+rtecg_int rtecg_pk_xmNm1d2(rtecg_pk s);
 rtecg_int rtecg_pk_maxslope(rtecg_pk s);
 
 /*

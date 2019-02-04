@@ -18,6 +18,7 @@ void print_defines(void);
 int main(int ac, char **av)
 {
 	print_defines();
+	return 0;
 	int n = sizeof(testdat) / sizeof(int);
 	//n *= 2;
 	char *keys[] = {"raw", "lp", "hp", "mwi", "peaksf", "peaksi", "spkf", "npkf", "spki", "npki", "f1", "f2", "i1", "i2", "rr", "rravg1", "rravg2"};

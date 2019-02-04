@@ -11,21 +11,23 @@ rtecg_ptlp rtecg_ptlp_init(void)
 {
 	rtecg_ptlp s;
 	memset(&s, 0, sizeof(rtecg_ptlp));
-	s.xm24 = RTECG_LPBUFLEN / 2;
+	s.xm6 = 6;
 	return s;
 }
 
 rtecg_ptlp rtecg_ptlp_hx0(rtecg_ptlp s, rtecg_int x0)
 {
-	s.y0 = (s.y1 << 1) - s.y2 + x0 - (s.xs[s.xm24] << 1) + s.xs[s.xm48];
+	// eq. 3
+	// y(nT) = 2y(nT - T) - y(nT - 2T) + x(nT) - 2x(nT - 6T) + x(nT - 12T)
+	s.y0 = (s.y1 << 1) - s.y2 + x0 - (s.xs[s.xm6] << 1) + s.xs[s.xm12];
 	s.y2 = s.y1;
 	s.y1 = s.y0;
-	s.xs[s.xm48] = x0;
-	if(++(s.xm48) == RTECG_LPBUFLEN){
-		s.xm48 = 0;
+	s.xs[s.xm12] = x0;
+	if(++(s.xm12) == RTECG_LPBUFLEN){
+		s.xm12 = 0;
 	}
-	if(++(s.xm24) == RTECG_LPBUFLEN){
-		s.xm24 = 0;
+	if(++(s.xm6) == RTECG_LPBUFLEN){
+		s.xm6 = 0;
 	}
 	return s;
 }
@@ -43,27 +45,36 @@ rtecg_pthp rtecg_pthp_init(void)
 {
 	rtecg_pthp s;
 	memset(&s, 0, sizeof(rtecg_pthp));
-	s.xm64 = (RTECG_HPBUFLEN + 1) / 2;
+	s.xm16 = 16;
+	s.xm17 = 15;
 	return s;
 }
 
 rtecg_pthp rtecg_pthp_hx0(rtecg_pthp s, rtecg_int x0)
 {
-	s.y += x0 - s.xs[s.xm128];
-	s.z = s.xs[s.xm64] - (s.y / RTECG_HPBUFLEN);
-	s.xs[s.xm128] = x0;
-	if(++(s.xm128) == RTECG_HPBUFLEN){
-		s.xm128 = 0;
+	// eq. 6 from the original paper:
+	// y(nT) = 32x(nT - 16T) - [y(nT - T) + x(nT) - x(nT - 32T)]
+	// eq. 2.4 from the errata:
+	// y(nT) = y(nT - T) - x(nT)/32 + x(nT - 16T) - x(nT - 17T) + x(nT - 32T)/32
+	//s.y += x0 - s.xs[s.xm32];
+	//s.z = s.xs[s.xm16] - (s.y / RTECG_HPBUFLEN);
+	s.y = s.y - (x0 / 32) + s.xs[s.xm16] - s.xs[s.xm17] + (s.xs[s.xm32] / 32);
+	s.xs[s.xm32] = x0;
+	if(++(s.xm32) == RTECG_HPBUFLEN){
+		s.xm32 = 0;
 	}
-	if(++(s.xm64) == RTECG_HPBUFLEN){
-		s.xm64 = 0;
+	if(++(s.xm17) == RTECG_HPBUFLEN){
+		s.xm17 = 0;
+	}
+	if(++(s.xm16) == RTECG_HPBUFLEN){
+		s.xm16 = 0;
 	}
 	return s;
 }
 
 rtecg_int rtecg_pthp_y0(rtecg_pthp s)
 {
-	return s.z;
+	return s.y;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -74,13 +85,27 @@ rtecg_ptd rtecg_ptd_init(void)
 {
 	rtecg_ptd s;
 	memset(&s, 0, sizeof(rtecg_ptd));
+	s.xm3 = 1;
+	s.xm2 = 2;
+	s.xm1 = 3;
 	return s;
 }
 
 rtecg_ptd rtecg_ptd_hx0(rtecg_ptd s, rtecg_int x0)
 {
-	s.y = x0 - s.xs[s.xm1];
-	s.xs[s.xm1] = x0;
+	// eq. 2.6 from the errata:
+	// y(nT) = (2x(nT) + x(nT - T) - x(nT - 3T) - 2x(nT - 4T)) / 8
+	s.y = ((2 * x0) + s.xs[s.xm1] - s.xs[s.xm3] - (2 * s.xs[s.xm4])) / 8;
+	s.xs[s.xm4] = x0;
+	if(++(s.xm4) == RTECG_DERIVLEN){
+		s.xm4 = 0;
+	}
+	if(++(s.xm3) == RTECG_DERIVLEN){
+		s.xm3 = 0;
+	}
+	if(++(s.xm2) == RTECG_DERIVLEN){
+		s.xm2 = 0;
+	}
 	if(++(s.xm1) == RTECG_DERIVLEN){
 		s.xm1 = 0;
 	}
@@ -89,6 +114,7 @@ rtecg_ptd rtecg_ptd_hx0(rtecg_ptd s, rtecg_int x0)
 
 rtecg_int rtecg_ptd_y0(rtecg_ptd s)
 {
+	// the squaring function in eq. 10 in the original paper is included here
 	return s.y * s.y;
 }
 
@@ -105,6 +131,8 @@ rtecg_pti rtecg_pti_init(void)
 
 rtecg_pti rtecg_pti_hx0(rtecg_pti s, rtecg_int x0)
 {
+	// eq. 11:
+	// y(nT) = (1/N)[x(nT - (N-1)T) + x(nT - (N-2)T) + ... + x(nT)]
 	s.sum += x0;
 	s.sum -= s.xs[s.ptr];
 	s.xs[s.ptr] = x0;
@@ -127,16 +155,21 @@ rtecg_pk rtecg_pk_init(void)
 {
 	rtecg_pk s;
 	memset(&s, 0, sizeof(rtecg_pk));
-	s.xm82 = RTECG_PKKNEIGH;
+	s.xmNm1d2 = RTECG_PKKNEIGH;
 	return s;
 }
 
+// "A peak is a local maximum determined by observing when the
+// signal changes direction within a predefined time interval." p. 233
+// We keep a buffer of an odd number of samples, and determine whether
+// the value at the midpoint of the buffer is the maximum (a peak) or not.
+// As we check, we compute the maximum slope.
 rtecg_pk rtecg_pk_mark(rtecg_pk s, rtecg_int x0)
 {
-	rtecg_int xm82 = s.xs[s.xm82];
+	rtecg_int xmNm1d2 = s.xs[s.xmNm1d2];
 	rtecg_int maxslope = 0; // only interested in positive slopes
 	s.y0 = 1;
-	rtecg_int ptr = s.xm165;
+	rtecg_int ptr = s.xmNm1;
 	rtecg_int last;
 	if(ptr == 0){
 		last = s.xs[RTECG_PKWINLEN - 1];
@@ -144,7 +177,7 @@ rtecg_pk rtecg_pk_mark(rtecg_pk s, rtecg_int x0)
 		last = s.xs[ptr - 1];
 	}
 	for(int i = 0; i < RTECG_PKWINLEN; i++){
-		if(s.xs[i] > xm82){
+		if(s.xs[i] > xmNm1d2){
 			s.y0 = 0;
 			maxslope = 0;
 			break;
@@ -160,13 +193,13 @@ rtecg_pk rtecg_pk_mark(rtecg_pk s, rtecg_int x0)
 			ptr = 0;
 		}
 	}
-	s.xs[s.xm165] = x0;
+	s.xs[s.xmNm1] = x0;
 	s.maxslope = maxslope;
-	if(++(s.xm165) == RTECG_PKWINLEN){
-		s.xm165 = 0;
+	if(++(s.xmNm1) == RTECG_PKWINLEN){
+		s.xmNm1 = 0;
 	}
-	if(++(s.xm82) == RTECG_PKWINLEN){
-		s.xm82 = 0;
+	if(++(s.xmNm1d2) == RTECG_PKWINLEN){
+		s.xmNm1d2 = 0;
 	}
 	return s;
 }
@@ -176,13 +209,13 @@ rtecg_int rtecg_pk_y0(rtecg_pk s)
 	return s.y0;
 }
 
-rtecg_int rtecg_pk_xm82(rtecg_pk s)
+rtecg_int rtecg_pk_xmNm1d2(rtecg_pk s)
 {
 	if(rtecg_pk_y0(s)){
-		if(s.xm82 == 0){
+		if(s.xmNm1d2 == 0){
 			return s.xs[RTECG_PKWINLEN - 1];
 		}else{
-			return s.xs[s.xm82 - 1];
+			return s.xs[s.xmNm1d2 - 1];
 		}
 	}else{
 		return 0;

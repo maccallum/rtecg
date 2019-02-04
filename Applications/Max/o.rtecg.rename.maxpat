@@ -39,13 +39,25 @@
 		"subpatcher_template" : "",
 		"boxes" : [ 			{
 				"box" : 				{
+					"id" : "obj-3",
+					"maxclass" : "newobj",
+					"numinlets" : 1,
+					"numoutlets" : 2,
+					"outlettype" : [ "FullPacket", "FullPacket" ],
+					"patching_rect" : [ 94.0, 90.0, 183.0, 20.0 ],
+					"text" : "o.if /self == split(\\\" \\\", quote( #1 ))"
+				}
+
+			}
+, 			{
+				"box" : 				{
 					"id" : "obj-6",
 					"maxclass" : "newobj",
 					"numinlets" : 1,
 					"numoutlets" : 2,
 					"outlettype" : [ "FullPacket", "FullPacket" ],
-					"patching_rect" : [ 309.0, 48.0, 132.0, 20.0 ],
-					"text" : "o.cond bound( #1/ecg )"
+					"patching_rect" : [ 94.0, 58.0, 91.0, 20.0 ],
+					"text" : "o.if bound(/self)"
 				}
 
 			}
@@ -149,7 +161,7 @@
  ],
 		"lines" : [ 			{
 				"patchline" : 				{
-					"destination" : [ "obj-9", 0 ],
+					"destination" : [ "obj-6", 0 ],
 					"source" : [ "obj-1", 0 ]
 				}
 
@@ -164,6 +176,20 @@
 , 			{
 				"patchline" : 				{
 					"destination" : [ "obj-2", 0 ],
+					"source" : [ "obj-3", 1 ]
+				}
+
+			}
+, 			{
+				"patchline" : 				{
+					"destination" : [ "obj-9", 0 ],
+					"source" : [ "obj-3", 0 ]
+				}
+
+			}
+, 			{
+				"patchline" : 				{
+					"destination" : [ "obj-2", 0 ],
 					"source" : [ "obj-4", 0 ]
 				}
 
@@ -172,6 +198,20 @@
 				"patchline" : 				{
 					"destination" : [ "obj-4", 1 ],
 					"source" : [ "obj-5", 0 ]
+				}
+
+			}
+, 			{
+				"patchline" : 				{
+					"destination" : [ "obj-2", 0 ],
+					"source" : [ "obj-6", 1 ]
+				}
+
+			}
+, 			{
+				"patchline" : 				{
+					"destination" : [ "obj-3", 0 ],
+					"source" : [ "obj-6", 0 ]
 				}
 
 			}
@@ -196,13 +236,6 @@
 				}
 
 			}
-, 			{
-				"patchline" : 				{
-					"destination" : [ "obj-2", 0 ],
-					"source" : [ "obj-9", 1 ]
-				}
-
-			}
  ],
 		"dependency_cache" : [ 			{
 				"name" : "o.route.mxo",
@@ -221,7 +254,7 @@
 				"type" : "iLaX"
 			}
 , 			{
-				"name" : "o.cond.mxo",
+				"name" : "o.if.mxo",
 				"type" : "iLaX"
 			}
  ],
