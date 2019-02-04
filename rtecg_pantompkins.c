@@ -48,19 +48,6 @@ rtecg_pt rtecg_pt_computerr(rtecg_pt s, char *buf, size_t buflen, int bufptr)
 	if(s.havefirstpeak){
 		rtecg_float rr = (s.last_spkf.x - s.last_last_spkf.x);
 		pd("rr = %d - %d\n", (rtecg_int)s.last_spkf.x, (rtecg_int)s.last_last_spkf.x);
-		// if(s.large_drop_event){
-		// 	if(rr < s.large_drop_event_to * RTECG_PT_LARGE_DROP_THRESH2){
-		// 		s.large_drop_event = 0;
-		// 		s.large_drop_event_from = 0;
-		// 		s.large_drop_event_to = 0;
-		// 	}
-		// }else{
-		// 	if(rr > s.rr * RTECG_PT_LARGE_DROP_THRESH1){
-		// 		s.large_drop_event = 1;
-		// 		s.large_drop_event_from = s.rr;
-		// 		s.large_drop_event_to = rr;
-		// 	}
-		// }
 		s.rr = rr;
 		s.rrsum1 = 0;
 		s.rrbuf1[s.rrptr1] = rr;
@@ -261,15 +248,6 @@ rtecg_pt rtecg_pt_process(rtecg_pt s, rtecg_int pkf, rtecg_int maxslopef, rtecg_
 			pd("npkf %d -> %d\n", (rtecg_int)onpkf, (rtecg_int)s.npkf);
 			s.f1 = s.npkf + .25 * (s.spkf - s.npkf);
 			s.f2 = s.f1 * .5;
-// #ifdef RTECG_LIMIT_BPM_INCREASES
-// 		}else if((!s.large_drop_event || s.rravg1 < 240) && (s.rr && !s.burn_avg1 && (60. / ((s.ctr - s.last_spkf.x) / (float)RTECG_FS) > RTECG_MAX_BPM_INCREASE * (60. / (s.rravg1 / RTECG_FS))))){
-// 			pd("%s\n", "reject pkf due to RTECG_LIMIT_BPM_INCREASES criteria");
-// 			rtecg_float onpkf = s.npkf;
-// 			s.npkf = 0.125 * pkf + .875 * s.npkf;
-// 			pd("npkf %d -> %d\n", (rtecg_int)onpkf, (rtecg_int)s.npkf);
-// 			s.f1 = s.npkf + .25 * (s.spkf - s.npkf);
-// 			s.f2 = s.f1 * .5;
-// #endif
 		}else{
 			pd("%s\n", "adding pkf to list");
 			s.pkf[s.ptrf] = (rtecg_spk){s.ctr, pkf, maxslopef, 0};
@@ -323,10 +301,17 @@ rtecg_pt rtecg_pt_process(rtecg_pt s, rtecg_int pkf, rtecg_int maxslopef, rtecg_
 					tptrf++;
 				}
 				if(pkmax){
+					
 					pd("found a pkf that corresponds to our pki: pkf: (%d, %d), pki: (%d, %d)\n", s.pkf[pkidx].x, s.pkf[pkidx].y, s.pki[s.ptri].x, s.pki[s.ptri].y);
 					if(s.ctr - s.last_spki.x < RTECG_MTOS(360) && (float)maxslopei / (float)s.last_spki.maxslope < 0.5){
+						// "When an RR interval is less than 360 ms (it must be greater
+						// than the 200 ms latency), a judgement is made to determine
+						// whether the current QRS complex has been correctly identified
+						// or whether it is really a T wave. If the maximal slope that
+						// occurs during this waveform is less than half that of the QRS
+						// waveform that preceeded it, it is identified to be a T wave; other-
+						// wise it is called a QRS complex." P. 234
 						pd("%s\n", "rejecting---likely a t-wave");
-						// this is likely a T-wave
 						s.tnpki = 0.125 * s.pki[s.ptri].y + .875 * s.tnpki;
 						s.ti1 = s.tnpki + .25 * (s.tspki - s.tnpki);
 						s.ti2 = s.ti1 * .5;

@@ -142,9 +142,17 @@ void loop()
 		if(rravg2){
 			rravg2 = 60. / rravg2;
 		}
+
+		// {
+		// 	char xxx[256];
+		// 	snprintf(xxx, 256, "pts.ctr : %d\npts.last_spki.x : %d\nrtecg_pt_last_spki(pts).x : %d\npts.ctr - rtecg_pt_last_spki(pts).x : %d\n", pts.ctr, pts.last_spki.x, rtecg_pt_last_spki(pts).x, pts.ctr - rtecg_pt_last_spki(pts).x);
+		// 	Serial.println(xxx);
+		// 	snprintf(xxx, 256, "pts.ctr : %d\npts.last_spkf.x : %d\nrtecg_pt_last_spkf(pts).x : %d\npts.ctr - rtecg_pt_last_spkf(pts).x : %d\n", pts.ctr, pts.last_spkf.x, rtecg_pt_last_spkf(pts).x, pts.ctr - rtecg_pt_last_spkf(pts).x);
+		// 	Serial.println(xxx);
+		// }
 		char *oscbndl = NULL;
 		int oscbndl_size = rtecg_osc_wrap_pt(pts.ctr, // packet number
-							     rtecg_time_then(0),
+						     rtecg_time_then(0),
 						     RTECG_FS, // fs
 						     sample_width,
 						     lom, // lead off
@@ -153,11 +161,11 @@ void loop()
 						     rtecg_pthp_y0(hp), // filtered
 						     rtecg_pti_y0(mwi), // mwi
 						     pts.ctr - rtecg_pt_last_spkf(pts).x, // spkf sample num
-							     rtecg_time_then(rtecg_pt_last_spkf(pts).x + RTECG_PKDEL + 1),
+						     rtecg_time_then(rtecg_pt_last_spkf(pts).x + RTECG_PKDEL + 1), // spkf sample time
 						     rtecg_pt_last_spkf(pts).y, // spkf sample val
 						     rtecg_pt_last_spkf(pts).confidence, // spkf confidence
 						     pts.ctr - rtecg_pt_last_spki(pts).x, // spki sample num
-							     rtecg_time_then(rtecg_pt_last_spki(pts).x + RTECG_PKDEL + 1),
+						     rtecg_time_then(rtecg_pt_last_spki(pts).x + RTECG_PKDEL + 1), // spki sample time
 						     rtecg_pt_last_spki(pts).y, // spki sample val
 						     rtecg_pt_last_spki(pts).confidence, // spki confidence
 						     rr, 
@@ -167,7 +175,7 @@ void loop()
 						     pts.f2,
 						     pts.i1,
 						     pts.i2,
-						     (analogRead(pin_bat) * 2.) / 1000.,
+						     (analogRead(pin_bat) * 2.) / 1000., // battery
 						     &oscbndl);
 
 		IPAddress ipaddy = udp.remoteIP();

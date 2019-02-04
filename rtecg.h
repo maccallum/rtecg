@@ -37,7 +37,7 @@ typedef float rtecg_float;
 #define RTECG_HPDEL 16
 //#define RTECG_DERIVDEL ((RTECG_DERIVLEN) / 2) // number of samples delay for derivative filter
 #define RTECG_DERIVDEL 2
-#define RTECG_MWIDEL RTECG_MWILEN // number of samples delay for moving window integrator
+#define RTECG_MWIDEL RTECG_MWILEN / 2 // number of samples delay for moving window integrator
 #define RTECG_PKDEL RTECG_PKKNEIGH + 1 // number of samples delay for peak window
 
 // burn in 
