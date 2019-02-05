@@ -7,9 +7,9 @@ char _rtecg_heartbeat_ip_local[] = {0, 0, 0, 0, '/', 'i', 'p', '/', 'l', 'o', 'c
 char _rtecg_heartbeat_port_local[] = {0, 0, 0, 0, '/', 'p', 'o', 'r', 't', '/', 'l', 'o', 'c', 'a', 'l', 0, ',', 'i', 0, 0, 0, 0, 0, 0};
 char _rtecg_heartbeat_ip_remote[] = {0, 0, 0, 0, '/', 'i', 'p', '/', 'r', 'e', 'm', 'o', 't', 'e', 0, 0, ',', 'i', 'i', 'i', 'i', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 char _rtecg_heartbeat_port_remote[] = {0, 0, 0, 0, '/', 'p', 'o', 'r', 't', '/', 'r', 'e', 'm', 'o', 't', 'e', 0, 0, 0, 0, ',', 'i', 0, 0, 0, 0, 0, 0};
-char _rtecg_heartbeat_self[] = {0, 0, 0, 0, '/', 's', 'e', 'l', 'f', 0, 0, 0, ',', 's', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-int _rtecg_heartbeat_bndllen = 16 + sizeof(_rtecg_heartbeat_mac) + sizeof(_rtecg_heartbeat_ip_local) + sizeof(_rtecg_heartbeat_port_local) + sizeof(_rtecg_heartbeat_ip_remote) + sizeof(_rtecg_heartbeat_port_remote) + sizeof(_rtecg_heartbeat_self);
-char _rtecg_heartbeat_bndl[16 + sizeof(_rtecg_heartbeat_mac) + sizeof(_rtecg_heartbeat_ip_local) + sizeof(_rtecg_heartbeat_port_local) + sizeof(_rtecg_heartbeat_ip_remote) + sizeof(_rtecg_heartbeat_port_remote) + sizeof(_rtecg_heartbeat_self)];
+char _rtecg_heartbeat_prefix[] = {0, 0, 0, 0, '/', 'p', 'r', 'e', 'f', 'i', 'x', 0, ',', 's', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+int _rtecg_heartbeat_bndllen = 16 + sizeof(_rtecg_heartbeat_mac) + sizeof(_rtecg_heartbeat_ip_local) + sizeof(_rtecg_heartbeat_port_local) + sizeof(_rtecg_heartbeat_ip_remote) + sizeof(_rtecg_heartbeat_port_remote) + sizeof(_rtecg_heartbeat_prefix);
+char _rtecg_heartbeat_bndl[16 + sizeof(_rtecg_heartbeat_mac) + sizeof(_rtecg_heartbeat_ip_local) + sizeof(_rtecg_heartbeat_port_local) + sizeof(_rtecg_heartbeat_ip_remote) + sizeof(_rtecg_heartbeat_port_remote) + sizeof(_rtecg_heartbeat_prefix)];
 
 void rtecg_heartbeat_set_mac(char mac[6])
 {
@@ -83,17 +83,17 @@ void rtecg_heartbeat_set_port_remote(uint32_t port_remote)
 	memcpy(p, _rtecg_heartbeat_port_remote, sizeof(_rtecg_heartbeat_port_remote));
 }
 
-void rtecg_heartbeat_set_self(char *self, int selflen)
+void rtecg_heartbeat_set_prefix(char *prefix, int prefixlen)
 {
-	*((int32_t *)_rtecg_heartbeat_self) = hton32(sizeof(_rtecg_heartbeat_self) - 4);
-	char *p = _rtecg_heartbeat_self + 16;
-	strncpy(p, self, 16);
+	*((int32_t *)_rtecg_heartbeat_prefix) = hton32(sizeof(_rtecg_heartbeat_prefix) - 4);
+	char *p = _rtecg_heartbeat_prefix + 16;
+	strncpy(p, prefix, 16);
 
 	p = _rtecg_heartbeat_bndl + 16 + sizeof(_rtecg_heartbeat_mac) + sizeof(_rtecg_heartbeat_ip_local) + sizeof(_rtecg_heartbeat_port_local) + sizeof(_rtecg_heartbeat_ip_remote) + sizeof(_rtecg_heartbeat_port_remote);
-	memcpy(p, _rtecg_heartbeat_self, sizeof(_rtecg_heartbeat_self));
+	memcpy(p, _rtecg_heartbeat_prefix, sizeof(_rtecg_heartbeat_prefix));
 }
 
-void rtecg_heartbeat_init(char mac[6], char ip_local[4], uint32_t port_local, char ip_remote[4], uint32_t port_remote, char *self, int selflen)
+void rtecg_heartbeat_init(char mac[6], char ip_local[4], uint32_t port_local, char ip_remote[4], uint32_t port_remote, char *prefix, int prefixlen)
 {
 	memset(_rtecg_heartbeat_bndl, 0, _rtecg_heartbeat_bndllen);
 	memcpy(_rtecg_heartbeat_bndl, "#bundle\0", 8);
@@ -102,7 +102,7 @@ void rtecg_heartbeat_init(char mac[6], char ip_local[4], uint32_t port_local, ch
 	rtecg_heartbeat_set_port_local(port_local);
 	rtecg_heartbeat_set_ip_remote(ip_remote);
 	rtecg_heartbeat_set_port_remote(port_remote);
-	rtecg_heartbeat_set_self(self, selflen);
+	rtecg_heartbeat_set_prefix(prefix, prefixlen);
 }
 
 int rtecg_heartbeat_len(void)

@@ -269,15 +269,15 @@ rtecg_pt rtecg_pt_process(rtecg_pt s, rtecg_int pkf, rtecg_int maxslopef, rtecg_
 			s.pki[s.ptri] = (rtecg_spk){s.ctr, pki, maxslopei, 0};
 			if(pki >= s.ti1){
 				// this is potentially a signal peak.
-				// ---the corresponding peak in the filtered signal should be RTECG_MWIDEL +- RTECG_MTOS(20) samples in the past.
-				// ---update tnpkf, tf1, and tf2 for all pkf values from tptrf to ptrf - (RTECG_MWIDEL + RTECG_MTOS(20)).
+				// ---the corresponding peak in the filtered signal should be RTECG_MWILEN +- RTECG_MTOS(20) samples in the past.
+				// ---update tnpkf, tf1, and tf2 for all pkf values from tptrf to ptrf - (RTECG_MWILEN + RTECG_MTOS(20)).
 				// ---compare all subsequent peaks in the filtered signal to tf1, updating local temp tnpkf and tf1 values.
 				// ---if there is more than one peak, take the max
 				// ---if a signal peak is found, record it, update all estimates and thresholds, and reset ptrs and ctr.
 				// ---if a signal peak is not found, mwi is a noise peak---update temporary estimates and thresholds for mwi, but not filt.
 				pd("%s\n", "pki > i1");
-				rtecg_ctr pkfmint = s.ctr - (RTECG_DERIVDEL + RTECG_MWIDEL);// + RTECG_MWILEN);
-				rtecg_ctr pkfmaxt = s.ctr;// - (RTECG_DERIVDEL + RTECG_MWIDEL);
+				rtecg_ctr pkfmint = s.ctr - (RTECG_DERIVDEL + RTECG_MWILEN);// + RTECG_MWILEN);
+				rtecg_ctr pkfmaxt = s.ctr;// - (RTECG_DERIVDEL + RTECG_MWILEN);
 				pd("searching for pkf between %u and %u that correspond to a pki at %d\n", pkfmint, pkfmaxt, s.ctr);
 				// any peaks that are before pkfmint will be too far in the past
 				// to correspond to any subsequent mwi peaks, so classify them as noise
@@ -334,7 +334,7 @@ rtecg_pt rtecg_pt_process(rtecg_pt s, rtecg_int pkf, rtecg_int maxslopef, rtecg_
 			}
 		}
 	}
-	if((pkf || pki) && s.havefirstpeak && s.havepeak == 0 && !s.burn_avg2 && (s.ctr - s.last_spki.x) > (s.rravg1 * 1.66)){
+	if((pkf || pki) && s.havefirstpeak && s.havepeak == 0 && /*!s.burn_avg2 && */ (s.ctr - s.last_spki.x) > (s.rravg1 * 1.66)){
 		pd("%s\n", "triggering searchback");
 		s.searchback = 1;
 	}
@@ -403,13 +403,13 @@ rtecg_pt rtecg_pt_searchback(rtecg_pt s, char *buf, size_t buflen, int bufptr)
 	rtecg_int havepkf = 0;
 	while(ptrf < s.ptrf){
 		rtecg_spk pkf = s.pkf[ptrf];
-		if(pkf.x < (pkimax.x - (RTECG_DERIVDEL + RTECG_MWIDEL))){// + RTECG_MWILEN))){
+		if(pkf.x < (pkimax.x - (RTECG_DERIVDEL + RTECG_MWILEN))){// + RTECG_MWILEN))){
 			//if(pkf.x < (pkimax.x - (RTECG_DERIVDEL + RTECG_MWILEN))){
-			pd("rejecting pkf: %d lt %d\n", pkf.x, (pkimax.x - (RTECG_DERIVDEL + RTECG_MWIDEL)));
+			pd("rejecting pkf: %d lt %d\n", pkf.x, (pkimax.x - (RTECG_DERIVDEL + RTECG_MWILEN)));
 			ptrf++;
 			continue;
 		}
-		if(pkf.x > (pkimax.x - (RTECG_DERIVDEL + RTECG_MWIDEL))){
+		if(pkf.x > (pkimax.x - (RTECG_DERIVDEL + RTECG_MWILEN))){
 			break;
 		}
 		if(pkf.y > pkfmax.y){

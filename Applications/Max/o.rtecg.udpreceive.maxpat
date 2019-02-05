@@ -4,13 +4,13 @@
 		"appversion" : 		{
 			"major" : 8,
 			"minor" : 0,
-			"revision" : 0,
+			"revision" : 2,
 			"architecture" : "x64",
 			"modernui" : 1
 		}
 ,
 		"classnamespace" : "box",
-		"rect" : [ 641.0, 79.0, 1245.0, 382.0 ],
+		"rect" : [ 514.0, 79.0, 580.0, 376.0 ],
 		"bglocked" : 0,
 		"openinpresentation" : 0,
 		"default_fontsize" : 12.0,
@@ -39,37 +39,13 @@
 		"subpatcher_template" : "",
 		"boxes" : [ 			{
 				"box" : 				{
-					"fontface" : 0,
-					"fontsize" : 12.0,
-					"id" : "obj-4",
-					"maxclass" : "o.display",
-					"numinlets" : 1,
-					"numoutlets" : 1,
-					"outlettype" : [ "" ],
-					"patching_rect" : [ 502.0, 82.0, 563.0, 34.0 ]
-				}
-
-			}
-, 			{
-				"box" : 				{
 					"id" : "obj-7",
 					"maxclass" : "button",
 					"numinlets" : 1,
 					"numoutlets" : 1,
 					"outlettype" : [ "bang" ],
 					"parameter_enable" : 0,
-					"patching_rect" : [ 112.0, 82.0, 24.0, 24.0 ]
-				}
-
-			}
-, 			{
-				"box" : 				{
-					"id" : "obj-3",
-					"maxclass" : "newobj",
-					"numinlets" : 1,
-					"numoutlets" : 0,
-					"patching_rect" : [ 286.5, 118.0, 144.0, 20.0 ],
-					"text" : "udpsend localhost 40000"
+					"patching_rect" : [ 40.0, 75.0, 24.0, 24.0 ]
 				}
 
 			}
@@ -83,7 +59,7 @@
 					"numinlets" : 1,
 					"numoutlets" : 2,
 					"outlettype" : [ "FullPacket", "FullPacket" ],
-					"patching_rect" : [ 144.0, 193.0, 416.0, 50.0 ],
+					"patching_rect" : [ 72.0, 186.0, 416.0, 50.0 ],
 					"text" : "assign(/self + \"/sys/time/arrival\", /sys/time/arrival),\ndelete(/sys/time/arrival)"
 				}
 
@@ -96,7 +72,7 @@
 					"maxclass" : "outlet",
 					"numinlets" : 1,
 					"numoutlets" : 0,
-					"patching_rect" : [ 144.0, 308.0, 30.0, 30.0 ]
+					"patching_rect" : [ 72.0, 301.0, 30.0, 30.0 ]
 				}
 
 			}
@@ -107,42 +83,8 @@
 					"numinlets" : 1,
 					"numoutlets" : 1,
 					"outlettype" : [ "FullPacket" ],
-					"patching_rect" : [ 144.0, 156.0, 92.0, 20.0 ],
+					"patching_rect" : [ 72.0, 149.0, 92.0, 20.0 ],
 					"text" : "o.rtecg.lncache"
-				}
-
-			}
-, 			{
-				"box" : 				{
-					"fontface" : 0,
-					"fontsize" : 12.0,
-					"id" : "obj-10",
-					"linecount" : 3,
-					"maxclass" : "o.compose",
-					"numinlets" : 2,
-					"numoutlets" : 1,
-					"outlettype" : [ "" ],
-					"patching_rect" : [ 576.0, 261.0, 649.0, 51.0 ],
-					"saved_bundle_data" : [ 35, 98, 117, 110, 100, 108, 101, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -92, 47, 97, 98, 47, 101, 99, 103, 0, 44, 105, 116, 105, 105, 105, 105, 105, 116, 105, 100, 105, 116, 105, 100, 100, 100, 100, 100, 100, 100, 100, 0, 0, 0, 0, -86, 56, -36, -111, 124, 124, -58, 28, 37, -49, 0, 0, 0, -56, 0, 0, 0, 9, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -96, -13, 111, 24, 119, 46, 84, -20, -90, -122, 0, 0, 0, 0, 63, -48, 0, 0, 0, 0, 0, 0, 0, 0, -95, 12, 91, 17, -89, 93, 13, -44, -91, -33, 0, 0, -67, 39, 63, -24, 0, 0, 0, 0, 0, 0, 64, 109, 105, 104, 114, -80, 32, -59, 64, 75, 57, -18, -53, -5, 21, -75, 64, 81, -6, 63, 20, 18, 5, -68, 64, 88, 19, -109, -35, -105, -10, 43, 64, 72, 19, -107, -127, 6, 36, -35, 64, -46, 9, 32, 0, 0, 0, 0, 64, -62, 9, 29, 112, -93, -41, 10 ],
-					"saved_bundle_length" : 184,
-					"text" : "/ab/ecg : [43576, 2017-04-07T02:48:28.773867Z, 200, 9, 0, 0, 41203, 1959-01-23T14:52:30.331736Z, 0, 0.25, 41228, 1948-05-31T20:06:53.054026Z, 48423, 0.75, 235.294, 54.4526, 71.9101, 96.3059, 48.153, 18468.5, 9234.23]"
-				}
-
-			}
-, 			{
-				"box" : 				{
-					"fontface" : 0,
-					"fontsize" : 12.0,
-					"id" : "obj-8",
-					"linecount" : 3,
-					"maxclass" : "o.compose",
-					"numinlets" : 2,
-					"numoutlets" : 1,
-					"outlettype" : [ "" ],
-					"patching_rect" : [ 576.0, 193.0, 649.0, 51.0 ],
-					"saved_bundle_data" : [ 35, 98, 117, 110, 100, 108, 101, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -92, 47, 97, 97, 47, 101, 99, 103, 0, 44, 105, 116, 105, 105, 105, 105, 105, 116, 105, 100, 105, 116, 105, 100, 100, 100, 100, 100, 100, 100, 100, 0, 0, 0, 0, -86, 56, -36, -111, 124, 124, -58, 28, 37, -49, 0, 0, 0, -56, 0, 0, 0, 9, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -96, -13, 111, 25, -56, -82, 84, -20, -90, -122, 0, 0, 0, 0, 63, -48, 0, 0, 0, 0, 0, 0, 0, 0, -95, 12, 91, 18, -8, -35, 13, -44, -91, -33, 0, 0, -67, 39, 63, -24, 0, 0, 0, 0, 0, 0, 64, 109, 105, 104, 114, -80, 32, -59, 64, 75, 57, -18, -53, -5, 21, -75, 64, 81, -6, 63, 20, 18, 5, -68, 64, 88, 19, -109, -35, -105, -10, 43, 64, 72, 19, -107, -127, 6, 36, -35, 64, -46, 9, 32, 0, 0, 0, 0, 64, -62, 9, 29, 112, -93, -41, 10 ],
-					"saved_bundle_length" : 184,
-					"text" : "/aa/ecg : [43576, 2017-04-07T02:48:28.773867Z, 200, 9, 0, 0, 41203, 1959-01-24T14:52:30.331736Z, 0, 0.25, 41228, 1948-06-01T20:06:53.054026Z, 48423, 0.75, 235.294, 54.4526, 71.9101, 96.3059, 48.153, 18468.5, 9234.23]"
 				}
 
 			}
@@ -153,7 +95,7 @@
 					"numinlets" : 1,
 					"numoutlets" : 1,
 					"outlettype" : [ "" ],
-					"patching_rect" : [ 144.0, 82.0, 126.0, 20.0 ],
+					"patching_rect" : [ 72.0, 75.0, 126.0, 20.0 ],
 					"text" : "o.rtecg.timetag.arrival"
 				}
 
@@ -165,7 +107,7 @@
 					"numinlets" : 1,
 					"numoutlets" : 1,
 					"outlettype" : [ "FullPacket" ],
-					"patching_rect" : [ 144.0, 118.0, 69.0, 20.0 ],
+					"patching_rect" : [ 72.0, 111.0, 69.0, 20.0 ],
 					"text" : "o.rtecg.self"
 				}
 
@@ -177,7 +119,7 @@
 					"numinlets" : 1,
 					"numoutlets" : 1,
 					"outlettype" : [ "" ],
-					"patching_rect" : [ 144.0, 41.0, 131.0, 20.0 ],
+					"patching_rect" : [ 72.0, 34.0, 131.0, 20.0 ],
 					"text" : "udpreceive #1 CNMAT"
 				}
 
@@ -185,7 +127,7 @@
  ],
 		"lines" : [ 			{
 				"patchline" : 				{
-					"destination" : [ "obj-4", 0 ],
+					"destination" : [ "obj-6", 0 ],
 					"order" : 0,
 					"source" : [ "obj-1", 0 ]
 				}
@@ -193,24 +135,9 @@
 			}
 , 			{
 				"patchline" : 				{
-					"destination" : [ "obj-6", 0 ],
+					"destination" : [ "obj-7", 0 ],
 					"order" : 1,
 					"source" : [ "obj-1", 0 ]
-				}
-
-			}
-, 			{
-				"patchline" : 				{
-					"destination" : [ "obj-7", 0 ],
-					"order" : 2,
-					"source" : [ "obj-1", 0 ]
-				}
-
-			}
-, 			{
-				"patchline" : 				{
-					"destination" : [ "obj-6", 0 ],
-					"source" : [ "obj-10", 0 ]
 				}
 
 			}
@@ -237,45 +164,29 @@
 			}
 , 			{
 				"patchline" : 				{
-					"destination" : [ "obj-3", 0 ],
-					"order" : 0,
-					"source" : [ "obj-6", 0 ]
-				}
-
-			}
-, 			{
-				"patchline" : 				{
 					"destination" : [ "obj-5", 0 ],
-					"order" : 1,
 					"source" : [ "obj-6", 0 ]
-				}
-
-			}
-, 			{
-				"patchline" : 				{
-					"destination" : [ "obj-6", 0 ],
-					"source" : [ "obj-8", 0 ]
 				}
 
 			}
  ],
 		"dependency_cache" : [ 			{
 				"name" : "o.rtecg.self.maxpat",
-				"bootpath" : "~/Development/maccallum/rtecg/Applications/Max",
+				"bootpath" : "~/Documents/Arduino/libraries/rtecg/Applications/Max",
 				"patcherrelativepath" : ".",
 				"type" : "JSON",
 				"implicit" : 1
 			}
 , 			{
 				"name" : "o.rtecg.timetag.arrival.maxpat",
-				"bootpath" : "~/Development/maccallum/rtecg/Applications/Max",
+				"bootpath" : "~/Documents/Arduino/libraries/rtecg/Applications/Max",
 				"patcherrelativepath" : ".",
 				"type" : "JSON",
 				"implicit" : 1
 			}
 , 			{
 				"name" : "o.rtecg.lncache.maxpat",
-				"bootpath" : "~/Development/maccallum/rtecg/Applications/Max",
+				"bootpath" : "~/Documents/Arduino/libraries/rtecg/Applications/Max",
 				"patcherrelativepath" : ".",
 				"type" : "JSON",
 				"implicit" : 1
@@ -286,14 +197,6 @@
 			}
 , 			{
 				"name" : "o.timetag.mxo",
-				"type" : "iLaX"
-			}
-, 			{
-				"name" : "o.compose.mxo",
-				"type" : "iLaX"
-			}
-, 			{
-				"name" : "o.display.mxo",
 				"type" : "iLaX"
 			}
  ],
