@@ -13,6 +13,7 @@
 //#include <rtecg_rtc.h>
 #include <rtecg_time.h>
 #include <rtecg_heartbeat.h>
+#include <rtecg_rand.h>
 
 #define pin_ecg A2
 #define pin_led 13
@@ -40,9 +41,13 @@ const unsigned int port_bcast = 323232;
 
 EthernetUDP udp;
 
+// variables
+int perform_searchback = 1;
+
 void setup()
 {
 	Serial.begin(115200);
+
 	pinMode(pin_ecg, INPUT); // analog pin that the ecg is attached to
 	pinMode(pin_led, OUTPUT); // led to blink when there's a heartbeat
 	digitalWrite(pin_led, LOW);
@@ -84,8 +89,12 @@ void setup()
 	uint32_t ipl = (uint32_t)ip_local;
 	uint32_t ipr = (uint32_t)ip_remote;
 	rtecg_heartbeat_init((char *)mac, (char *)(&ipl), port_local, (char *)(&ipr), port_remote, macstr, 12);
+
+	rtecg_set_rand_max(UINT32_MAX);
+	rtecg_set_rand(esp_random);
 }
 
+uint32_t hbtime = 0;
 char incoming_packet[UDP_TX_PACKET_MAX_SIZE];
 void loop()
 {
@@ -118,14 +127,20 @@ void loop()
 		char buf[buflen];
 		buf[0] = 0;
 		pts = rtecg_pt_process(pts, rtecg_pk_y0(pkf) * rtecg_pk_xmNm1d2(pkf), rtecg_pk_maxslope(pkf), rtecg_pk_y0(pki) * rtecg_pk_xmNm1d2(pki), rtecg_pk_maxslope(pki), buf, buflen, 0);
+		//Serial.print(buf);
 
 		// yield again in case the classification took a long time
 		yield();
 
 		// perform searchback if a peak hasn't been found in the expected time frame
 		if(pts.searchback){
-			buf[0] = 0;
-			pts = rtecg_pt_searchback(pts, buf, buflen, 0);
+			if(perform_searchback){
+				buf[0] = 0;
+				pts = rtecg_pt_searchback(pts, buf, buflen, 0);
+				//Serial.println(buf);
+			}else{
+				pts = rtecg_pt_recordMissedPeak(pts, buf, buflen, 0);
+			}
 			// yield again just in case
 			yield();
 		}
@@ -143,13 +158,6 @@ void loop()
 			rravg2 = 60. / rravg2;
 		}
 
-		// {
-		// 	char xxx[256];
-		// 	snprintf(xxx, 256, "pts.ctr : %d\npts.last_spki.x : %d\nrtecg_pt_last_spki(pts).x : %d\npts.ctr - rtecg_pt_last_spki(pts).x : %d\n", pts.ctr, pts.last_spki.x, rtecg_pt_last_spki(pts).x, pts.ctr - rtecg_pt_last_spki(pts).x);
-		// 	Serial.println(xxx);
-		// 	snprintf(xxx, 256, "pts.ctr : %d\npts.last_spkf.x : %d\nrtecg_pt_last_spkf(pts).x : %d\npts.ctr - rtecg_pt_last_spkf(pts).x : %d\n", pts.ctr, pts.last_spkf.x, rtecg_pt_last_spkf(pts).x, pts.ctr - rtecg_pt_last_spkf(pts).x);
-		// 	Serial.println(xxx);
-		// }
 		char *oscbndl = NULL;
 		int oscbndl_size = rtecg_osc_wrap_pt(pts.ctr, // packet number
 						     rtecg_time_then(0),
@@ -202,15 +210,19 @@ void loop()
 		}else{
 			digitalWrite(pin_led, LOW);
 		}
-	}else{
-		yield();
+		//}else{
+		//yield();
 	}
-	delay(1);
-	static int hbctr;
-	if(++hbctr == 1000){
+	//delay(1);
+	yield();
+	//static int hbctr;
+	//if(++hbctr == 1000){
+	uint32_t hbt = millis();
+	if(hbt - hbtime >= 1000){
 		int ret = udp.beginPacket(ip_bcast, port_bcast);
 		ret = udp.write(rtecg_heartbeat_bndl(), rtecg_heartbeat_len());
 		ret = udp.endPacket();
-		hbctr = 0;
+		//hbctr = 0;
+		hbtime = hbt;
 	}
 }

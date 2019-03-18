@@ -67,13 +67,13 @@
 					"fontface" : 0,
 					"fontsize" : 12.0,
 					"id" : "obj-39",
-					"linecount" : 8,
+					"linecount" : 10,
 					"maxclass" : "o.expr.codebox",
 					"numinlets" : 1,
 					"numoutlets" : 2,
 					"outlettype" : [ "FullPacket", "FullPacket" ],
-					"patching_rect" : [ 102.0, 106.0, 475.0, 127.0 ],
-					"text" : "map(assign, /self + [\"/ecg/samplenum\", \"/ecg/time\", \"/ecg/fs\",\"/ecg/samplewidth/us\", \"/ecg/leadoff/neg\", \"/ecg/leadoff/pos\", \"/ecg/raw\", \"/ecg/filtered\", \"/ecg/mwi\", \"/ecg/spkf/samplenum\", \"/ecg/spkf/time\", \"/ecg/spkf/value\", \"/ecg/spkf/confidence\", \"/ecg/spki/samplenum\", \"/ecg/spki/time\", \"/ecg/spki/value\", \"/ecg/spki/confidence\", \"/ecg/rr\", \"/ecg/rravg/1\", \"/ecg/rravg/2\", \"/ecg/f1\", \"/ecg/f2\", \"/ecg/i1\", \"/ecg/i2\", \"/ecg/bat\"], value(/self + \"/ecg\"))"
+					"patching_rect" : [ 102.0, 106.0, 475.0, 154.0 ],
+					"text" : "map(assign, /self + [\"/ecg/samplenum\", \"/ecg/time\", \"/ecg/fs\",\"/ecg/samplewidth/us\", \"/ecg/leadoff/neg\", \"/ecg/leadoff/pos\", \"/ecg/raw\", \"/ecg/filtered\", \"/ecg/mwi\", \"/ecg/spkf/samplenum\", \"/ecg/spkf/time\", \"/ecg/spkf/value\", \"/ecg/spkf/confidence\", \"/ecg/spki/samplenum\", \"/ecg/spki/time\", \"/ecg/spki/value\", \"/ecg/spki/confidence\", \"/ecg/rr\", \"/ecg/rravg/1\", \"/ecg/rravg/2\", \"/ecg/f1\", \"/ecg/f2\", \"/ecg/i1\", \"/ecg/i2\", \"/ecg/bat\"], value(/self + \"/ecg\")),\nassign(/self + \"/ecg/list\", value(/self + \"/ecg\")),\nmap(delete, /self + \"/ecg\")"
 				}
 
 			}

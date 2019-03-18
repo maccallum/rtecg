@@ -40,6 +40,7 @@ char *rtecg_osc_match_no_wc(char *address, int len, char *bndl);
 t_osc_timetag rtecg_osc_getTimetagFromHeader(int len, char *bndl);
 int rtecg_osc_getIPAddress(int len, char *bndl, char ip[4]);
 int rtecg_osc_getPort(int len, char *bndl, uint32_t *port);
+int rtecg_osc_getSync(int len, char *bndl, t_osc_timetag *t);
 
 #ifdef __cplusplus
 }

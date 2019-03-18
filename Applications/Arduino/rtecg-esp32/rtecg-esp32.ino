@@ -15,6 +15,7 @@
 #include <rtecg_rtc.h>
 //#include <rtecg_time.h>
 #include <rtecg_heartbeat.h>
+#include <rtecg_rand.h>
 
 #define pin_ecg A2
 #define pin_led 13
@@ -45,6 +46,9 @@ const unsigned int port_bcast = 323232;
 
 WiFiUDP udp;
 boolean connected = false;
+
+// variables
+int perform_searchback = 1;
 
 void wifi_event_handler(WiFiEvent_t e)
 {
@@ -105,6 +109,9 @@ void setup()
 
 	rtecg_rtc_init(pin_rtc_sqw);
 	//rtecg_time_init();
+	
+	rtecg_set_rand_max(UINT32_MAX);
+	rtecg_set_rand(esp_random);
 }
 
 char incoming_packet[RTECG_UDP_INCOMING_PACKET_MAX_SIZE];
@@ -142,8 +149,13 @@ void loop()
 
 	// perform searchback if a peak hasn't been found in the expected time frame
 	if(pts.searchback){
-		buf[0] = 0;
-		pts = rtecg_pt_searchback(pts, buf, buflen, 0);
+		if(perform_searchback){
+			buf[0] = 0;
+			pts = rtecg_pt_searchback(pts, buf, buflen, 0);
+			//Serial.println(buf);
+		}else{
+			pts = rtecg_pt_recordMissedPeak(pts, buf, buflen, 0);
+		}
 		// yield again just in case
 		yield();
 	}
@@ -188,7 +200,7 @@ void loop()
 					     pts.f2,
 					     pts.i1,
 					     pts.i2,
-					     (analogRead(pin_bat) * 2.) / 1000.,
+					     (analogRead(pin_bat) * 2.) / 1000., // battery
 					     &oscbndl);
 
 	if(WiFi.status() != WL_CONNECTED){
@@ -199,8 +211,13 @@ void loop()
 	int size = udp.parsePacket();
 	if(size){
 		udp.read(incoming_packet, RTECG_UDP_INCOMING_PACKET_MAX_SIZE);
+		t_osc_timetag t;
+		int ret = rtecg_osc_getSync(size, incoming_packet, &t);
+		if(!ret){
+
+		}
 		char ip[4];
-		int ret = rtecg_osc_getIPAddress(size, incoming_packet, ip);
+		ret = rtecg_osc_getIPAddress(size, incoming_packet, ip);
 		if(!ret){
 			ip_remote[0] = ip[0];
 			ip_remote[1] = ip[1];

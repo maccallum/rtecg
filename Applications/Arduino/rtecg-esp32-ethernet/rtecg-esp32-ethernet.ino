@@ -13,10 +13,13 @@
 //#include <rtecg_rtc.h>
 #include <rtecg_time.h>
 #include <rtecg_heartbeat.h>
+#include <rtecg_rand.h>
 
 #define pin_ecg A2
 #define pin_led 13
-
+#define pin_bat A13
+#define pin_lom 39
+#define pin_lop 36
 
 // classifier state data structures
 uint32_t tmicros;
@@ -29,22 +32,35 @@ rtecg_pk pki; // peaks in the integrated signal
 rtecg_pt pts; // pan-tompkins algorithm applied to pkf and pki
 
 // networking
-byte mac[] = {0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED};
-IPAddress ipaddy(192, 168, 0, 200);
-IPAddress localipaddy(192, 168, 0, 130);
-const unsigned int port = 9998;
+byte mac[6];
+char macstr[14];
+IPAddress ip_local, ip_remote(192, 168, 0, 200), ip_bcast;
+const unsigned int port_local = 8888;
+unsigned int port_remote = 9998;
+const unsigned int port_bcast = 323232;
 
 EthernetUDP udp;
+
+// variables
+int perform_searchback = 1;
 
 void setup()
 {
 	Serial.begin(115200);
+	
 	pinMode(pin_ecg, INPUT); // analog pin that the ecg is attached to
 	pinMode(pin_led, OUTPUT); // led to blink when there's a heartbeat
 	digitalWrite(pin_led, LOW);
+	pinMode(pin_bat, INPUT);
+	pinMode(pin_lom, INPUT);
+	pinMode(pin_lop, INPUT);
 
 	//Ethernet.init(15); // ESP8266 with Adafruit Featherwing Ethernet
 	Ethernet.init(33); // ESP32 with Adafruit Featherwing Ethernet
+
+	// ESP32 has an ethernet mac address which is the basemac with 3 added to the last octet
+	esp_read_mac(mac, ESP_MAC_WIFI_STA);
+	mac[5] += 3;
 	Ethernet.begin(mac);
 	if(Ethernet.hardwareStatus() == EthernetNoHardware){
 		Serial.println("No Ethernet hardware found.");
@@ -52,7 +68,7 @@ void setup()
 	if(Ethernet.linkStatus() == LinkOFF){
 		Serial.println("Ethernet cable is not connected.");
 	}
-	udp.begin(8888);
+	udp.begin(port_local);
 
 	// initialize feature classification data structures
 	lp = rtecg_ptlp_init();
@@ -63,12 +79,24 @@ void setup()
 	pki = rtecg_pk_init();
 	pts = rtecg_pt_init();
 
-	rtecg_osc_init_pt(0);
+	snprintf(macstr, 14, "/%02X%02X%02X%02X%02X%02X", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+	rtecg_osc_init_pt(macstr, 13);
 
 	//rtecg_rtc_init(pin_rtc_sqw);
 	rtecg_time_init();
+
+	ip_local = Ethernet.localIP();
+	ip_bcast = ip_local;
+	ip_bcast[3] = 255;
+	uint32_t ipl = (uint32_t)ip_local;
+	uint32_t ipr = (uint32_t)ip_remote;
+	rtecg_heartbeat_init((char *)mac, (char *)(&ipl), port_local, (char *)(&ipr), port_remote, macstr, 12);
+
+	rtecg_set_rand_max(UINT32_MAX);
+	rtecg_set_rand(esp_random);
 }
 
+char incoming_packet[UDP_TX_PACKET_MAX_SIZE];
 void loop()
 {
 	//int sample_width = rtecg_rtc_wait();
@@ -76,6 +104,8 @@ void loop()
 
 	// now read ECG pin
 	rtecg_int ecgval = analogRead(pin_ecg);
+	rtecg_int lom = digitalRead(pin_lom);
+	rtecg_int lop = digitalRead(pin_lop);	
 
 	//rtecg_rtc_tick();
 	rtecg_time_tick();
@@ -106,8 +136,13 @@ void loop()
 
 	// perform searchback if a peak hasn't been found in the expected time frame
 	if(pts.searchback){
-		buf[0] = 0;
-		pts = rtecg_pt_searchback(pts, buf, buflen, 0);
+		if(perform_searchback){
+			buf[0] = 0;
+			pts = rtecg_pt_searchback(pts, buf, buflen, 0);
+			//Serial.println(buf);
+		}else{
+			pts = rtecg_pt_recordMissedPeak(pts, buf, buflen, 0);
+		}
 		// yield again just in case
 		yield();
 	}
@@ -130,16 +165,16 @@ void loop()
 					     rtecg_time_then(0),
 					     RTECG_FS, // fs
 					     sample_width,
+					     lom, // lead off
+					     lop, // lead off
 					     ecgval, // raw
 					     rtecg_pthp_y0(hp), // filtered
 					     rtecg_pti_y0(mwi), // mwi
 					     pts.ctr - rtecg_pt_last_spkf(pts).x, // spkf sample num
-					     //rtecg_rtc_then(rtecg_pt_last_spkf(pts).x + RTECG_PKDEL + 1),
 					     rtecg_time_then(rtecg_pt_last_spkf(pts).x + RTECG_PKDEL), // spkf sample time
 					     rtecg_pt_last_spkf(pts).y, // spkf sample val
 					     rtecg_pt_last_spkf(pts).confidence, // spkf confidence
 					     pts.ctr - rtecg_pt_last_spki(pts).x, // spki sample num
-					     //rtecg_rtc_then(rtecg_pt_last_spki(pts).x + RTECG_PKDEL + 1),
 					     rtecg_time_then(rtecg_pt_last_spki(pts).x + RTECG_PKDEL), // spki sample time
 					     rtecg_pt_last_spki(pts).y, // spki sample val
 					     rtecg_pt_last_spki(pts).confidence, // spki confidence
@@ -150,15 +185,37 @@ void loop()
 					     pts.f2,
 					     pts.i1,
 					     pts.i2,
+					     (analogRead(pin_bat) * 2.) / 1000., // battery
 					     &oscbndl);
-	int ret = udp.beginPacket(ipaddy, port);
+
+	int size = udp.parsePacket();
+	if(size){
+		udp.read(incoming_packet, UDP_TX_PACKET_MAX_SIZE);
+		char ip[4];
+		int ret = rtecg_osc_getIPAddress(size, incoming_packet, ip);
+		if(!ret){
+			ip_remote[0] = ip[0];
+			ip_remote[1] = ip[1];
+			ip_remote[2] = ip[2];
+			ip_remote[3] = ip[3];
+			rtecg_heartbeat_set_ip_remote(ip);
+		}
+		uint32_t port = 0;
+		ret = rtecg_osc_getPort(size, incoming_packet, &port);
+		if(!ret){
+			port_remote = port;
+			rtecg_heartbeat_set_port_remote(port);
+		}
+	}
+	
+	int ret = udp.beginPacket(ip_remote, port_remote);
 	ret = udp.write((const uint8_t *)oscbndl, oscbndl_size);
 	udp.endPacket();
 
-	//flash LED if we have a peak
+	// flash LED if we have a peak
 	if(pts.havepeak){
-		if(digitalRead(pin_led) == HIGH){
-			digitalWrite(pin_led, LOW);		
-		}
+		digitalWrite(pin_led, HIGH);
+	}else{
+		digitalWrite(pin_led, LOW);
 	}
 }

@@ -44,11 +44,6 @@ typedef float rtecg_float;
 #define RTECG_PREBURNLEN RTECG_MTOS(500)
 #define RTECG_BURNLEN RTECG_MTOS(2500) // burn in length
 
-// #define RTECG_LIMIT_BPM_INCREASES
-// #ifdef RTECG_LIMIT_BPM_INCREASES
-// #define RTECG_MAX_BPM_INCREASE 1.6
-// #endif
-
 
 #ifdef __cplusplus
 }

@@ -185,6 +185,8 @@ int rtecg_osc_wrap_pt(uint32_t packet_num,
 	return rtecg_osc_bndl_size;
 }
 
+// utilities to get data out of bundles
+
 #define RTECG_MIN_BNDL_LEN 24 // header (16) size (4) address (4) 
 
 char *rtecg_osc_match_no_wc(char *address, int len, char *bndl)
@@ -253,5 +255,16 @@ int rtecg_osc_getPort(int len, char *bndl, uint32_t *port)
 	}
 	p += 4;
 	*port = ntoh32(*((int32_t *)p));
+	return 0;
+}
+
+int rtecg_osc_getSync(int len, char *bndl, t_osc_timetag *t)
+{
+	*t = (t_osc_timetag){0, 0};
+	char *m = rtecg_osc_match_no_wc("/sync", len, bndl);
+	if(!m){
+		return 1;
+	}
+	*t = osc_timetag_decodeFromHeader(bndl + 8);
 	return 0;
 }

@@ -22,9 +22,6 @@ typedef struct _rtecg_spk
 	rtecg_float confidence;
 } rtecg_spk;
 
-//#define RTECG_PT_LARGE_DROP_THRESH1 1.6
-//#define RTECG_PT_LARGE_DROP_THRESH2 1 / 1.4
-
 typedef struct _rtecg_pt
 {
 	rtecg_float spkf, spki, npkf, npki, f1, f2, i1, i2;
@@ -43,8 +40,6 @@ typedef struct _rtecg_pt
 	rtecg_int rravg2_missed_ctr;
 	rtecg_int havefirstpeak;
 	rtecg_int searchback;
-	//rtecg_int large_drop_event;
-	//rtecg_int large_drop_event_from, large_drop_event_to;
 } rtecg_pt;
 
 rtecg_pt rtecg_pt_init(void);
@@ -53,6 +48,7 @@ rtecg_pt rtecg_pt_process(rtecg_pt s, rtecg_int pkf, rtecg_int maxslopef, rtecg_
 rtecg_pt rtecg_pt_searchback(rtecg_pt s, char *buf, size_t buflen, int bufptr);
 rtecg_spk rtecg_pt_last_spkf(rtecg_pt s);
 rtecg_spk rtecg_pt_last_spki(rtecg_pt s);
+rtecg_pt rtecg_pt_recordMissedPeak(rtecg_pt s, char *buf, size_t buflen, int bufptr);
 
 #ifdef __cplusplus
 }
